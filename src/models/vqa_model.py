@@ -7,13 +7,14 @@ class VQAModel(nn.Module):
     def __init__(self, num_answer_classes, hidden_size=768):
         super().__init__()
 
-        vit_model_name = "google/vit-base-patch16-224-in21k"  # name of the ViT model
-        self.vit = ViTModel.from_pretrained(vit_model_name)
+        # To produce image embeddings, we'll use a pre-trained ViT (visual transformer)
+        self.vit = ViTModel.from_pretrained("google/vit-base-patch16-224-in21k")
 
-        # Load pre-trained BERT
+        # To produce text embeddings for the questions, we'll use a pre-trained BERT model
         self.bert = BertModel.from_pretrained('bert-base-uncased')
 
-        # Create the layers
+        # Our model will apply a transform to the two embeddings, concatenate them,
+        # then apply a final layer to predict an answer class.
         self.vit_transform = nn.Linear(self.vit.config.hidden_size, hidden_size)
         self.bert_transform = nn.Linear(self.bert.config.hidden_size, hidden_size)
         self.head = nn.Linear(hidden_size * 2, num_answer_classes)
