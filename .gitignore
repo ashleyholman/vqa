@@ -1,0 +1,7 @@
+/env/
+/data/
+/build/
+/dist/
+ashvqa.egg-info/
+__pycache__/
+*.swp
