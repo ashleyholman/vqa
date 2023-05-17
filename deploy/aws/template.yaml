@@ -1,0 +1,84 @@
+Resources:
+  VqaBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: vqa
+
+  MyInstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Roles:
+        - !Ref VqaTrainingInferenceRole
+
+  VqaTrainingInferenceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      Description: >
+        Role to assign EC2 instances used for training and inference.
+        Used for reading datasets from S3, and reading and storing model weights
+        for model snapshots.
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service:
+            - ec2.amazonaws.com
+          Action:
+          - sts:AssumeRole
+      Policies:
+      - PolicyName: VqaTrainingInferenceS3Policy
+        PolicyDocument:
+          Version: 2012-10-17
+          Statement:
+          - Effect: Allow
+            Action:
+            - s3:PutObject
+            - s3:GetObject
+            - s3:DeleteObject
+            - s3:ListObjects
+            Resource: 
+            - !Sub arn:aws:s3:::${VqaBucket}/*
+  VQACPUOnlyLaunchTemplate:
+    Type: AWS::EC2::LaunchTemplate
+    Properties:
+      LaunchTemplateName: vqa-cpuonly
+      LaunchTemplateData:
+        IamInstanceProfile:
+          Arn: !GetAtt MyInstanceProfile.Arn
+        InstanceType: m5.xlarge
+        ImageId: ami-06802b09ea316fcf9
+        KeyName: vqa
+        SecurityGroupIds:
+        - !GetAtt VQATrainingInferenceSecurityGroup.GroupId
+        InstanceMarketOptions:
+          MarketType: spot
+        BlockDeviceMappings: 
+          - DeviceName: /dev/xvda
+            Ebs: 
+              VolumeSize: 150
+  VQACPUOnlyAutoscalingGroup:
+    Type: AWS::AutoScaling::AutoScalingGroup
+    Properties:
+      AvailabilityZones: ["us-east-1a", "us-east-1b", "us-east-1c",
+                          "us-east-1d", "us-east-1e", "us-east-1f"]
+      MinSize: '0'
+      MaxSize: '1'
+      DesiredCapacity: '0'
+      LaunchTemplate:
+        LaunchTemplateId: !Ref VQACPUOnlyLaunchTemplate
+        Version: !GetAtt VQACPUOnlyLaunchTemplate.LatestVersionNumber
+  VQATrainingInferenceSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for VQA instances
+      SecurityGroupIngress:
+      - IpProtocol: tcp
+        FromPort: 22
+        ToPort: 22
+        CidrIp: 0.0.0.0/0
+
+Outputs:
+  CPUOnlyAutoScalingGroupName:
+    Description: The name of the CPU-Only Auto Scaling Group
+    Value: !Ref VQACPUOnlyAutoscalingGroup
