@@ -5,6 +5,8 @@ python3 -m venv env
 source env/bin/activate
 pip install -r requirements.txt
 pip install -e .
+# Downgrade urllib3 to avoid SSL version error
+pip install 'urllib3<2.0'
 
 # Download data sets
 echo
