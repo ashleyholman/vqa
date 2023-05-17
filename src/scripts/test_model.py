@@ -24,6 +24,7 @@ def main():
     dataset_type = os.getenv('VQA_DATASET_TYPE', "mini")
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
+    print(f"Torch device: {device}")
     print(f"Using {num_workers} DataLoader workers")
 
     # load dataset
