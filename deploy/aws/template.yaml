@@ -74,7 +74,6 @@ Resources:
                           "us-east-1d", "us-east-1e", "us-east-1f"]
       MinSize: '0'
       MaxSize: '1'
-      DesiredCapacity: '0'
       LaunchTemplate:
         LaunchTemplateId: !Ref VQACPUOnlyLaunchTemplate
         Version: !GetAtt VQACPUOnlyLaunchTemplate.LatestVersionNumber
