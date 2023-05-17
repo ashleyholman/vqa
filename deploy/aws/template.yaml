@@ -57,6 +57,15 @@ Resources:
           - DeviceName: /dev/xvda
             Ebs: 
               VolumeSize: 150
+        UserData:
+          Fn::Base64: |
+            #!/bin/bash
+            sudo -u ec2-user bash <<EOF
+            cd /home/ec2-user
+            git clone https://github.com/ashleyholman/vqa.git
+            cd vqa
+            ./provision.sh
+            EOF
   VQACPUOnlyAutoscalingGroup:
     Type: AWS::AutoScaling::AutoScalingGroup
     Properties:
