@@ -65,6 +65,7 @@ Resources:
             git clone https://github.com/ashleyholman/vqa.git
             cd vqa
             ./provision.sh
+            ./src/scripts/make_mini_dataset.sh
             EOF
   VQACPUOnlyAutoscalingGroup:
     Type: AWS::AutoScaling::AutoScalingGroup
