@@ -1,3 +1,23 @@
+Parameters:
+  TrainingInferenceUserDataScript:
+    Type: String
+    Default: |
+      #!/bin/bash
+      sudo -u ec2-user bash <<EOF
+      cd /home/ec2-user
+      git clone https://github.com/ashleyholman/vqa.git
+      cd vqa
+      ./provision.sh
+      ./src/scripts/make_mini_dataset.sh
+      EOF
+
+Mappings:
+  InstanceTypes:
+    CPUOnly:
+      Type: m5.xlarge
+    GPU:
+      Type: p3.2xlarge
+
 Resources:
   VqaBucket:
     Type: AWS::S3::Bucket
@@ -39,6 +59,7 @@ Resources:
             - s3:ListObjects
             Resource: 
             - !Sub arn:aws:s3:::${VqaBucket}/*
+
   VQACPUOnlyLaunchTemplate:
     Type: AWS::EC2::LaunchTemplate
     Properties:
@@ -46,27 +67,20 @@ Resources:
       LaunchTemplateData:
         IamInstanceProfile:
           Arn: !GetAtt MyInstanceProfile.Arn
-        InstanceType: m5.xlarge
+        InstanceType: !FindInMap [InstanceTypes, CPUOnly, Type]
         ImageId: ami-06802b09ea316fcf9
         KeyName: vqa
         SecurityGroupIds:
         - !GetAtt VQATrainingInferenceSecurityGroup.GroupId
         InstanceMarketOptions:
           MarketType: spot
-        BlockDeviceMappings: 
+        BlockDeviceMappings:
           - DeviceName: /dev/xvda
-            Ebs: 
+            Ebs:
               VolumeSize: 150
         UserData:
-          Fn::Base64: |
-            #!/bin/bash
-            sudo -u ec2-user bash <<EOF
-            cd /home/ec2-user
-            git clone https://github.com/ashleyholman/vqa.git
-            cd vqa
-            ./provision.sh
-            ./src/scripts/make_mini_dataset.sh
-            EOF
+          Fn::Base64: !Ref TrainingInferenceUserDataScript
+
   VQACPUOnlyAutoscalingGroup:
     Type: AWS::AutoScaling::AutoScalingGroup
     Properties:
@@ -77,6 +91,39 @@ Resources:
       LaunchTemplate:
         LaunchTemplateId: !Ref VQACPUOnlyLaunchTemplate
         Version: !GetAtt VQACPUOnlyLaunchTemplate.LatestVersionNumber
+
+  VQAGPULaunchTemplate:
+    Type: AWS::EC2::LaunchTemplate
+    Properties:
+      LaunchTemplateName: vqa-gpu
+      LaunchTemplateData:
+        IamInstanceProfile:
+          Arn: !GetAtt MyInstanceProfile.Arn
+        InstanceType: !FindInMap [InstanceTypes, GPU, Type]
+        ImageId: ami-06802b09ea316fcf9
+        KeyName: vqa
+        SecurityGroupIds:
+        - !GetAtt VQATrainingInferenceSecurityGroup.GroupId
+        InstanceMarketOptions:
+          MarketType: spot
+        BlockDeviceMappings:
+          - DeviceName: /dev/xvda
+            Ebs:
+              VolumeSize: 150
+        UserData:
+          Fn::Base64: !Ref TrainingInferenceUserDataScript
+
+  VQAGPUAutoscalingGroup:
+    Type: AWS::AutoScaling::AutoScalingGroup
+    Properties:
+      AvailabilityZones: ["us-east-1a", "us-east-1b", "us-east-1c",
+                          "us-east-1d", "us-east-1e", "us-east-1f"]
+      MinSize: '0'
+      MaxSize: '1'
+      LaunchTemplate:
+        LaunchTemplateId: !Ref VQAGPULaunchTemplate
+        Version: !GetAtt VQAGPULaunchTemplate.LatestVersionNumber
+
   VQATrainingInferenceSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
@@ -91,3 +138,7 @@ Outputs:
   CPUOnlyAutoScalingGroupName:
     Description: The name of the CPU-Only Auto Scaling Group
     Value: !Ref VQACPUOnlyAutoscalingGroup
+
+  GPUAutoScalingGroupName:
+    Description: The name of the GPU Auto Scaling Group
+    Value: !Ref VQAGPUAutoscalingGroup
