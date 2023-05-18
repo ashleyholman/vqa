@@ -6,3 +6,4 @@ ashvqa.egg-info/
 __pycache__/
 *.swp
 /EC2_IP_ADDRESS
+/snapshots

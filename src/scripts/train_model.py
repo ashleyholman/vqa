@@ -12,6 +12,7 @@ from src.models.vqa_model import VQAModel
 from torch.nn.functional import cross_entropy
 
 from src.snapshots.vqa_snapshot_manager import VQASnapshotManager
+from src.snapshots.snapshot import Snapshot
 
 def train_model(args):
     num_workers = args.num_dataloader_workers
@@ -26,11 +27,23 @@ def train_model(args):
     print(f"Torch device: {device}")
     print(f"Using {num_workers} DataLoader workers")
 
-    # load dataset
-    dataset = VQADataset(dataset_type)
+    if args.from_snapshot:
+        snapshot = snapshot_manager.load_snapshot(args.from_snapshot, dataset_type)
+        if snapshot is None:
+            print(f"Snapshot '{args.from_snapshot}' not found.")
+            return
+        print(f"Using snapshot: {args.from_snapshot}")
+        dataset = snapshot.get_dataset()
+        model = snapshot.get_model()
+        start_epoch = snapshot.get_metadata()["epoch"]
+    else:
+        # load dataset
+        dataset = VQADataset(dataset_type)
 
-    # load model
-    model = VQAModel(len(dataset.answer_classes))
+        # load model
+        model = VQAModel(len(dataset.answer_classes))
+
+        start_epoch = 0
 
     # If there's a GPU available...
     if torch.cuda.is_available():
@@ -64,7 +77,7 @@ def train_model(args):
     optimizer = Adam(model.parameters())
 
     print("Beginning training.")
-    for epoch in range(num_epochs):
+    for epoch in range(start_epoch, num_epochs):
         print(f"Epoch {epoch + 1}/{num_epochs}")
         running_loss = 0.0
         model.train()  # set model to training mode
@@ -104,14 +117,15 @@ def train_model(args):
         # Save the model and dataset state
         if isModelParallel:
             # When saving a parallel model, the original model is wrapped and stored in model.module.
-            snapshot_manager.save_snapshot(snapshot_name, model.module, dataset, lightweight=False)
+            snapshot_manager.save_snapshot(snapshot_name, model.module, dataset, epoch, lightweight=False)
         else:
-            snapshot_manager.save_snapshot(snapshot_name, model, dataset, lightweight=False)
+            snapshot_manager.save_snapshot(snapshot_name, model, dataset, epoch, lightweight=False)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Train a VQA model')
     parser.add_argument('--num-dataloader-workers', type=int, default=1, help='Number of dataloader workers')
     parser.add_argument('--dataset-type', type=str, default='train', help='Dataset type to train on (train, validation, mini)')
     parser.add_argument('--num-epochs', type=int, default=5, help='Number of epochs to train for')
+    parser.add_argument('--from-snapshot', type=str, help="Snapshot name to load the model and dataset from.")
     args = parser.parse_args()
     train_model(args)

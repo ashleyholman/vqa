@@ -34,10 +34,12 @@ def main(args):
     snapshot_manager = VQASnapshotManager()
 
     if args.from_snapshot:
-        model, dataset = snapshot_manager.load_snapshot(args.from_snapshot, dataset_type)
-        if model is None or dataset is None:
+        snapshot = snapshot_manager.load_snapshot(args.from_snapshot, dataset_type)
+        if snapshot is None:
             print(f"Snapshot '{args.from_snapshot}' not found.")
             return
+        model = snapshot.get_model()
+        dataset = snapshot.get_dataset()
         print(f"Using snapshot: {args.from_snapshot}")
     else:
         # instantiate dataset and model from scratch
@@ -76,8 +78,6 @@ def main(args):
             predictions.extend(preds.tolist())
             correct_answers.extend(labels.tolist())
             top_5_correct_in_batch = top_k_correct(logits, labels, 5)
-            #if top_5_correct_in_batch > 0:
-            #  print(f"\nTop 5 correct in batch: {top_5_correct_in_batch}")
             top_5_correct += top_5_correct_in_batch
 
     # At this point, predictions and correct_answers are lists containing the model's

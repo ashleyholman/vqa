@@ -7,6 +7,7 @@ from botocore.exceptions import NoCredentialsError
 
 from src.data.vqa_dataset import VQADataset
 from src.models.vqa_model import VQAModel
+from src.snapshots.snapshot import Snapshot
 
 class VQASnapshotManager:
     LOCAL_CACHE_DIR = os.path.join(os.path.dirname(os.path.realpath(__file__)), '../../snapshots')
@@ -37,12 +38,12 @@ class VQASnapshotManager:
 
             model.load_state_dict(state_dict, strict=not metadata['lightweight'])
 
-            return model, dataset
+            return Snapshot(model, dataset, metadata)
         except Exception as e:
             print(f'Failed to load snapshot: {e}')
-            return None, None
+            return None
 
-    def save_snapshot(self, snapshot_name, model, dataset, lightweight=False):
+    def save_snapshot(self, snapshot_name, model, dataset, epoch, lightweight=False):
         try:
             # ensure snapshot dir exists
             os.makedirs(os.path.join(self.LOCAL_CACHE_DIR, snapshot_name), exist_ok=True)
@@ -59,7 +60,8 @@ class VQASnapshotManager:
             metadata = {
                 'answer_classes': dataset.answer_classes,
                 'lightweight': lightweight,
-                'model_version': model.MODEL_NAME
+                'model_version': model.MODEL_NAME,
+                'epoch': epoch
             }
 
             with open(os.path.join(self.LOCAL_CACHE_DIR, snapshot_name, "metadata.json"), 'w') as f:
