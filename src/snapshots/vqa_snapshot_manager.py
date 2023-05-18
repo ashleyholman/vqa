@@ -5,11 +5,16 @@ import boto3
 import shutil
 from botocore.exceptions import NoCredentialsError
 
+from torch.optim import Adam
+
 from src.data.vqa_dataset import VQADataset
 from src.models.vqa_model import VQAModel
 from src.snapshots.snapshot import Snapshot
 
 class SnapshotNotFoundException(Exception):
+    pass
+
+class InvalidSnapshotException(Exception):
     pass
 
 class VQASnapshotManager:
@@ -44,9 +49,21 @@ class VQASnapshotManager:
 
         model.load_state_dict(state_dict, strict=not metadata['lightweight'])
 
-        return Snapshot(model, dataset, metadata)
+        # Load the optimizer's state dict
+        optimizer_state_dict = None
+        if os.path.exists(os.path.join(self.LOCAL_CACHE_DIR, snapshot_name, "optimizer_state.pth")):
+            optimizer_state_dict = torch.load(os.path.join(self.LOCAL_CACHE_DIR, snapshot_name, "optimizer_state.pth"))
+        else:
+            raise InvalidSnapshotException(f"Snapshot '{snapshot_name}' does not contain an optimizer state dict.")
 
-    def save_snapshot(self, snapshot_name, model, dataset, epoch, loss, lightweight=False):
+        # Re-create the optimizer and load the state dict
+        optimizer = Adam(model.parameters())
+        if optimizer_state_dict:
+            optimizer.load_state_dict(optimizer_state_dict)
+
+        return Snapshot(model, dataset, optimizer, metadata)
+
+    def save_snapshot(self, snapshot_name, model, optimizer, dataset, epoch, loss, lightweight=False):
         try:
             # ensure snapshot dir exists
             os.makedirs(os.path.join(self.LOCAL_CACHE_DIR, snapshot_name), exist_ok=True)
@@ -60,13 +77,16 @@ class VQASnapshotManager:
 
             torch.save(state_dict, os.path.join(self.LOCAL_CACHE_DIR, snapshot_name, "model_weights.pth"))
 
+            # Save optimizer state
+            torch.save(optimizer.state_dict(), os.path.join(self.LOCAL_CACHE_DIR, snapshot_name, "optimizer_state.pth"))
+
             metadata = {
                 'settype': dataset.settype,
                 'answer_classes': dataset.answer_classes,
                 'lightweight': lightweight,
                 'model_version': model.MODEL_NAME,
                 'epoch': epoch,
-                'loss': loss
+                'loss': loss.item()
             }
 
             with open(os.path.join(self.LOCAL_CACHE_DIR, snapshot_name, "metadata.json"), 'w') as f:
@@ -90,7 +110,7 @@ class VQASnapshotManager:
 
         # Attempt to download the snapshot
         try:
-            for filename in ["model_weights.pth", "metadata.json"]:
+            for filename in ["model_weights.pth", "optimizer_state.pth", "metadata.json"]:
                 key = f"snapshots/{snapshot_name}/{filename}"
                 self.s3_client.download_file(self.S3_BUCKET, key, os.path.join(local_snapshot_dir, filename))
         except Exception as e:
@@ -102,7 +122,7 @@ class VQASnapshotManager:
 
     def _save_to_s3(self, snapshot_name):
         try:
-            for filename in ["model_weights.pth", "metadata.json"]:
+            for filename in ["model_weights.pth", "optimizer_state.pth", "metadata.json"]:
                 key = f"snapshots/{snapshot_name}/{filename}"
                 self.s3_client.upload_file(os.path.join(self.LOCAL_CACHE_DIR, snapshot_name, filename), self.S3_BUCKET, key)
         except NoCredentialsError:

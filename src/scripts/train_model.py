@@ -37,12 +37,21 @@ def train_model(args):
         print(f"Using snapshot: {args.from_snapshot}")
         dataset = snapshot.get_dataset()
         model = snapshot.get_model()
+        optimizer = snapshot.get_optimizer()
+
         # The epoch number stored in the snapshot represents
         # the last completed training epoch, so resume training from epoch+1
         start_epoch = snapshot.get_metadata()["epoch"]+1
         if (start_epoch > num_epochs):
             print(f"Snapshot '{args.from_snapshot}' already trained for {start_epoch-1} epochs.  Nothing to do.")
             return
+
+        if (snapshot.isLightweight()):
+            print(f"WARNING: Snapshot '{args.from_snapshot}' is lightweight, meaning the pretrained "
+                  "weights of the BERT and ViT models are not included in the snapshot.  Those models "
+                  "will be initialized from huggingface.  If the underlying weights of these models "
+                  "have changed since the snapshot was created, the model may not train correctly.")
+
         print(f"Resuming training from epoch {start_epoch}.")
     else:
         # load dataset
@@ -50,6 +59,9 @@ def train_model(args):
 
         # load model
         model = VQAModel(len(dataset.answer_classes))
+
+        # Create a new optimizer
+        optimizer = Adam(model.parameters())
 
         # epoch's are 1-indexed for ease of understanding by the user
         start_epoch = 1
@@ -82,8 +94,6 @@ def train_model(args):
         batch_size = batch_size * torch.cuda.device_count()
     print(f"Using batch size: {batch_size}")
     data_loader = DataLoader(dataset, batch_size=16, num_workers=num_workers, shuffle=True)
-
-    optimizer = Adam(model.parameters())
 
     print("Beginning training.")
     for epoch in range(start_epoch, num_epochs+1):
@@ -126,9 +136,9 @@ def train_model(args):
         # Save the model and dataset state
         if isModelParallel:
             # When saving a parallel model, the original model is wrapped and stored in model.module.
-            snapshot_manager.save_snapshot(snapshot_name, model.module, dataset, epoch, loss, lightweight=args.lightweight_snapshots)
+            snapshot_manager.save_snapshot(snapshot_name, model.module, optimizer, dataset, epoch, loss, lightweight=args.lightweight_snapshots)
         else:
-            snapshot_manager.save_snapshot(snapshot_name, model, dataset, epoch, loss, lightweight=args.lightweight_snapshots)
+            snapshot_manager.save_snapshot(snapshot_name, model, optimizer, dataset, epoch, loss, lightweight=args.lightweight_snapshots)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Train a VQA model')
