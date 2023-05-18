@@ -1,4 +1,5 @@
 #!/bin/bash
+REGION=ap-southeast-1
 STACK_NAME="vqa-stack"
 EC2_IP_FILE=$( dirname -- "$0"; )/../../EC2_IP_ADDRESS
 
@@ -27,17 +28,17 @@ fi
 
 echo == Describing stack $STACK_NAME..
 # Name of your Auto Scaling Group
-ASG_NAME=$(aws cloudformation describe-stacks --stack-name $STACK_NAME --query "Stacks[0].Outputs[?OutputKey=='$OUTPUT_KEY'].OutputValue" --output text)
+ASG_NAME=$(aws cloudformation describe-stacks --region $REGION --stack-name $STACK_NAME --query "Stacks[0].Outputs[?OutputKey=='$OUTPUT_KEY'].OutputValue" --output text)
 echo Found ASG $ASG_NAME
 
 echo == Retrieving instance ID from ASG..
 # Get instance ID
-INSTANCE_ID=$(aws autoscaling describe-auto-scaling-groups --auto-scaling-group-name $ASG_NAME --query "AutoScalingGroups[0].Instances[0].InstanceId" --output text)
+INSTANCE_ID=$(aws autoscaling describe-auto-scaling-groups --region $REGION --auto-scaling-group-name $ASG_NAME --query "AutoScalingGroups[0].Instances[0].InstanceId" --output text)
 echo Found instance $INSTANCE_ID
 
 echo == Retrieving instance Public IP
 # Get instance public IP
-INSTANCE_IP=$(aws ec2 describe-instances --instance-ids $INSTANCE_ID --query "Reservations[0].Instances[0].PublicIpAddress" --output text)
+INSTANCE_IP=$(aws ec2 describe-instances --region $REGION --instance-ids $INSTANCE_ID --query "Reservations[0].Instances[0].PublicIpAddress" --output text)
 
 echo writing IP $INSTANCE_IP to $EC2_IP_FILE
 # Write the IP to the file

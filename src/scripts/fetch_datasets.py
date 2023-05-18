@@ -106,7 +106,7 @@ for url in URLS:
         # If on EC2, try to download from the S3 mirror.
         # Not all files are on the mirror necessarily, so we'll fall back to the
         # original source if it's not there.
-        s3_mirror_url = f"s3://vqa/datasets/{filename.split('/')[-1]}"
+        s3_mirror_url = f"s3://vqa-ap-southeast-1/datasets/{filename.split('/')[-1]}"
         if on_ec2 and file_exists_in_s3(s3_mirror_url):
             download_file_from_s3(s3_mirror_url, filename)
             pass

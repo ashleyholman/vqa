@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # AWS region
-REGION="us-east-1"
+REGION="ap-southeast-1"
 
 # Cloudformation stack name
 STACK_NAME="vqa-stack"
@@ -30,7 +30,7 @@ else
 fi
 
 # Get the name of the Auto Scaling group from the CloudFormation stack
-ASG_NAME=$(aws cloudformation describe-stacks --stack-name $STACK_NAME --query "Stacks[0].Outputs[?OutputKey=='$OUTPUT_KEY'].OutputValue" --output text)
+ASG_NAME=$(aws cloudformation describe-stacks --region $REGION --stack-name $STACK_NAME --query "Stacks[0].Outputs[?OutputKey=='$OUTPUT_KEY'].OutputValue" --output text)
 
 # Set minimum and maximum size
 MIN_SIZE=0

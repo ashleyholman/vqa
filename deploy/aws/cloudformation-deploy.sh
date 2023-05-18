@@ -5,7 +5,7 @@ cd $( dirname -- "$0"; )
 
 STACK_NAME="vqa-stack"
 TEMPLATE_FILE="template.yaml"
-REGION="us-east-1"
+REGION="ap-southeast-1"
 
 aws cloudformation deploy \
 --stack-name $STACK_NAME \

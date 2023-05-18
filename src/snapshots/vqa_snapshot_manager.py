@@ -19,7 +19,7 @@ class InvalidSnapshotException(Exception):
 
 class VQASnapshotManager:
     LOCAL_CACHE_DIR = os.path.join(os.path.dirname(os.path.realpath(__file__)), '../../snapshots')
-    S3_BUCKET = 'vqa'
+    S3_BUCKET = 'vqa-ap-southeast-1'
 
     def __init__(self):
         self.s3_client = boto3.client('s3')

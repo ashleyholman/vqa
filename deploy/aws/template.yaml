@@ -34,7 +34,7 @@ Resources:
   VqaBucket:
     Type: AWS::S3::Bucket
     Properties:
-      BucketName: vqa
+      BucketName: vqa-ap-southeast-1
 
   MyInstanceProfile:
     Type: AWS::IAM::InstanceProfile
@@ -84,7 +84,7 @@ Resources:
         IamInstanceProfile:
           Arn: !GetAtt MyInstanceProfile.Arn
         InstanceType: !FindInMap [InstanceTypes, CPUOnly, Type]
-        ImageId: ami-06802b09ea316fcf9
+        ImageId: ami-0eea1b45aaf6b2809
         KeyName: vqa
         SecurityGroupIds:
         - !GetAtt VQATrainingInferenceSecurityGroup.GroupId
@@ -105,8 +105,7 @@ Resources:
   VQACPUOnlyAutoscalingGroup:
     Type: AWS::AutoScaling::AutoScalingGroup
     Properties:
-      AvailabilityZones: ["us-east-1a", "us-east-1b", "us-east-1c",
-                          "us-east-1d", "us-east-1e", "us-east-1f"]
+      AvailabilityZones: ["ap-southeast-1a", "ap-southeast-1b"]
       MinSize: '0'
       MaxSize: '1'
       LaunchTemplate:
@@ -121,7 +120,7 @@ Resources:
         IamInstanceProfile:
           Arn: !GetAtt MyInstanceProfile.Arn
         InstanceType: !FindInMap [InstanceTypes, GPU, Type]
-        ImageId: ami-06802b09ea316fcf9
+        ImageId: ami-0eea1b45aaf6b2809
         KeyName: vqa
         SecurityGroupIds:
         - !GetAtt VQATrainingInferenceSecurityGroup.GroupId
@@ -140,8 +139,8 @@ Resources:
   VQAGPUAutoscalingGroup:
     Type: AWS::AutoScaling::AutoScalingGroup
     Properties:
-      AvailabilityZones: ["us-east-1a", "us-east-1b", "us-east-1c",
-                          "us-east-1d", "us-east-1e", "us-east-1f"]
+      AvailabilityZones: ["ap-southeast-1a", "ap-southeast-1b"]
+      MinSize: '0'
       MinSize: '0'
       MaxSize: '1'
       LaunchTemplate:
