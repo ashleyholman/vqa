@@ -3,6 +3,7 @@ from torch.optim import Adam
 from torch.utils.data import DataLoader
 import torch.nn as nn
 import os
+import json
 
 from tqdm import tqdm
 from src.data.vqa_dataset import VQADataset
@@ -14,6 +15,7 @@ def train_model():
     dataset_type = "train"
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     num_epochs = int(os.getenv('VQA_NUM_EPOCHS', 5))
+    isModelParallel = False
 
     print(f"Torch device: {device}")
     print(f"Using {num_workers} DataLoader workers")
@@ -33,6 +35,7 @@ def train_model():
         if torch.cuda.device_count() > 1:
             print(f"Let's use {torch.cuda.device_count()} GPUs!")
             model = nn.DataParallel(model)
+            isModelParallel = True
     else:
         print('Training on CPU...')
 
@@ -46,6 +49,10 @@ def train_model():
 
     # Create a DataLoader to handle batching of the dataset
     print("Loading dataset..")
+    batch_size = 16
+    if isModelParallel:
+        batch_size = batch_size * torch.cuda.device_count()
+    print(f"Using batch size: {batch_size}")
     data_loader = DataLoader(dataset, batch_size=16, num_workers=num_workers, shuffle=True)
 
     optimizer = Adam(model.parameters())
@@ -56,7 +63,7 @@ def train_model():
         running_loss = 0.0
         model.train()  # set model to training mode
 
-        for batch in tqdm(data_loader):
+        for idx, batch in enumerate(tqdm(data_loader), start=1):
             # Transfer data to the appropriate device
             images = batch["image"].to(device)
             input_ids = batch["input_ids"].to(device)
@@ -76,11 +83,23 @@ def train_model():
 
             running_loss += loss.item() * images.size(0)
 
+            # Print average loss every 500 batches
+            if idx % 500 == 0:
+                print(f"\nBatch {idx}, Average Loss: {running_loss / (idx * images.size(0)):.4f}")
+
         epoch_loss = running_loss / len(dataset)
         print(f"Epoch {epoch + 1} loss: {epoch_loss:.4f}")
 
-# Save model weights
-torch.save(model.module.state_dict(), 'vqa_model_weights.pth')
+    # Save model weights
+    if isModelParallel:
+        # When saving a paraallel model, the original model is wrapped and stored in model.module.
+        torch.save(model.module.state_dict(), 'vqa_model_weights.pth')
+    else:
+        torch.save(model.state_dict(), 'vqa_model_weights.pth')
+
+    # Save the answer_classes
+    with open('vqa_answer_classes.json', 'w') as f:
+        json.dump(dataset.answer_classes, f)
 
 if __name__ == "__main__":
     train_model()
