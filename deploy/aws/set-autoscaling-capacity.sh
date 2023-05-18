@@ -1,4 +1,4 @@
-#!/bin/bash -x
+#!/bin/bash
 
 # AWS region
 REGION="us-east-1"

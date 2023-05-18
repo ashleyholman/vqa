@@ -10,6 +10,18 @@ Parameters:
       ./provision.sh
       ./src/scripts/make_mini_dataset.sh
       EOF
+  UseCPUSpotInstances:
+    Type: String
+    Default: false
+    AllowedValues: 
+      - 'true'
+      - 'false'
+  UseGPUSpotInstances:
+    Type: String
+    Default: false
+    AllowedValues: 
+      - 'true'
+      - 'false'
 
 Mappings:
   InstanceTypes:
@@ -56,9 +68,13 @@ Resources:
             - s3:PutObject
             - s3:GetObject
             - s3:DeleteObject
-            - s3:ListObjects
             Resource: 
             - !Sub arn:aws:s3:::${VqaBucket}/*
+          - Effect: Allow
+            Action:
+            - s3:ListBucket
+            Resource:
+            - !Sub arn:aws:s3:::${VqaBucket}
 
   VQACPUOnlyLaunchTemplate:
     Type: AWS::EC2::LaunchTemplate
@@ -74,6 +90,11 @@ Resources:
         - !GetAtt VQATrainingInferenceSecurityGroup.GroupId
         InstanceMarketOptions:
           MarketType: spot
+        InstanceMarketOptions: 
+          Fn::If:
+            - UseCPUSpotInstancesCondition
+            - MarketType: spot
+            - !Ref 'AWS::NoValue'
         BlockDeviceMappings:
           - DeviceName: /dev/xvda
             Ebs:
@@ -104,8 +125,11 @@ Resources:
         KeyName: vqa
         SecurityGroupIds:
         - !GetAtt VQATrainingInferenceSecurityGroup.GroupId
-        InstanceMarketOptions:
-          MarketType: spot
+        InstanceMarketOptions: 
+          Fn::If:
+            - UseGPUSpotInstancesCondition
+            - MarketType: spot
+            - !Ref 'AWS::NoValue'
         BlockDeviceMappings:
           - DeviceName: /dev/xvda
             Ebs:
@@ -142,3 +166,13 @@ Outputs:
   GPUAutoScalingGroupName:
     Description: The name of the GPU Auto Scaling Group
     Value: !Ref VQAGPUAutoscalingGroup
+
+Conditions:
+  UseCPUSpotInstancesCondition: 
+    Fn::Equals:
+      - !Ref UseCPUSpotInstances
+      - 'true'
+  UseGPUSpotInstancesCondition: 
+    Fn::Equals:
+      - !Ref UseGPUSpotInstances
+      - 'true'

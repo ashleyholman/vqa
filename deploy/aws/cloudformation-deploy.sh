@@ -11,7 +11,8 @@ aws cloudformation deploy \
 --stack-name $STACK_NAME \
 --template-file $TEMPLATE_FILE \
 --region $REGION \
---capabilities CAPABILITY_NAMED_IAM
+--capabilities CAPABILITY_NAMED_IAM \
+--parameter-overrides file://template-parameters.json 
 
 if [ $? -eq 0 ]; then
     echo -e "\nStack update initiated, waiting for update to complete..."

@@ -1,0 +1,10 @@
+[
+  {
+    "ParameterKey": "UseCPUSpotInstances",
+    "ParameterValue": "true"
+  },
+  {
+    "ParameterKey": "UseGPUSpotInstances",
+    "ParameterValue": "false"
+  }
+]
