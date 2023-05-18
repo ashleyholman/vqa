@@ -34,6 +34,7 @@ class VQADataset(Dataset):
         self.labels = []
         self.image_ids = []
         self.images = {}
+        self.settype = settype
 
         self.image_count = 0
 

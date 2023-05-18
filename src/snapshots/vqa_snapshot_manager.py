@@ -9,6 +9,9 @@ from src.data.vqa_dataset import VQADataset
 from src.models.vqa_model import VQAModel
 from src.snapshots.snapshot import Snapshot
 
+class SnapshotNotFoundException(Exception):
+    pass
+
 class VQASnapshotManager:
     LOCAL_CACHE_DIR = os.path.join(os.path.dirname(os.path.realpath(__file__)), '../../snapshots')
     S3_BUCKET = 'vqa'
@@ -20,30 +23,30 @@ class VQASnapshotManager:
         os.makedirs(self.LOCAL_CACHE_DIR, exist_ok=True)
 
     def load_snapshot(self, snapshot_name, dataset_type):
-        try:
-            self._populate_cache(snapshot_name)
+        self._populate_cache(snapshot_name)
 
-            # Load the metadata
-            with open(os.path.join(self.LOCAL_CACHE_DIR, snapshot_name, "metadata.json"), 'r') as f:
-                metadata = json.load(f)
+        # Load the metadata
+        with open(os.path.join(self.LOCAL_CACHE_DIR, snapshot_name, "metadata.json"), 'r') as f:
+            metadata = json.load(f)
 
-            # Load dataset
-            dataset = VQADataset(settype=dataset_type, answer_classes=metadata['answer_classes'])
+        # Ensure the dataset type matches
+        if metadata['settype'] != dataset_type:
+            raise ValueError(f"Snapshot '{snapshot_name}' was trained on dataset type '{metadata['settype']}', but dataset type '{dataset_type}' was requested.")
 
-            # Initialize the model
-            model = VQAModel(len(dataset.answer_classes))
+        # Load dataset
+        dataset = VQADataset(settype=dataset_type, answer_classes=metadata['answer_classes'])
 
-            # Load model weights
-            state_dict = torch.load(os.path.join(self.LOCAL_CACHE_DIR, snapshot_name, "model_weights.pth"))
+        # Initialize the model
+        model = VQAModel(len(dataset.answer_classes))
 
-            model.load_state_dict(state_dict, strict=not metadata['lightweight'])
+        # Load model weights
+        state_dict = torch.load(os.path.join(self.LOCAL_CACHE_DIR, snapshot_name, "model_weights.pth"))
 
-            return Snapshot(model, dataset, metadata)
-        except Exception as e:
-            print(f'Failed to load snapshot: {e}')
-            return None
+        model.load_state_dict(state_dict, strict=not metadata['lightweight'])
 
-    def save_snapshot(self, snapshot_name, model, dataset, epoch, lightweight=False):
+        return Snapshot(model, dataset, metadata)
+
+    def save_snapshot(self, snapshot_name, model, dataset, epoch, loss, lightweight=False):
         try:
             # ensure snapshot dir exists
             os.makedirs(os.path.join(self.LOCAL_CACHE_DIR, snapshot_name), exist_ok=True)
@@ -58,10 +61,12 @@ class VQASnapshotManager:
             torch.save(state_dict, os.path.join(self.LOCAL_CACHE_DIR, snapshot_name, "model_weights.pth"))
 
             metadata = {
+                'settype': dataset.settype,
                 'answer_classes': dataset.answer_classes,
                 'lightweight': lightweight,
                 'model_version': model.MODEL_NAME,
-                'epoch': epoch
+                'epoch': epoch,
+                'loss': loss
             }
 
             with open(os.path.join(self.LOCAL_CACHE_DIR, snapshot_name, "metadata.json"), 'w') as f:
@@ -93,6 +98,7 @@ class VQASnapshotManager:
 
             # If download fails, delete the snapshot directory
             shutil.rmtree(local_snapshot_dir)
+            raise SnapshotNotFoundException(f"Snapshot '{snapshot_name}' not found.")
 
     def _save_to_s3(self, snapshot_name):
         try:

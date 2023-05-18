@@ -18,7 +18,7 @@ def train_model(args):
     num_workers = args.num_dataloader_workers
     dataset_type = args.dataset_type
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    num_epochs = int(os.getenv('VQA_NUM_EPOCHS', 5))
+    num_epochs = args.num_epochs
     isModelParallel = False
 
     # Create the snapshot manager
@@ -28,14 +28,22 @@ def train_model(args):
     print(f"Using {num_workers} DataLoader workers")
 
     if args.from_snapshot:
-        snapshot = snapshot_manager.load_snapshot(args.from_snapshot, dataset_type)
-        if snapshot is None:
-            print(f"Snapshot '{args.from_snapshot}' not found.")
+        try:
+            snapshot = snapshot_manager.load_snapshot(args.from_snapshot, dataset_type)
+        except Exception as e:
+            print(f"Failed to load snapshot: {e}")
             return
+
         print(f"Using snapshot: {args.from_snapshot}")
         dataset = snapshot.get_dataset()
         model = snapshot.get_model()
-        start_epoch = snapshot.get_metadata()["epoch"]
+        # The epoch number stored in the snapshot represents
+        # the last completed training epoch, so resume training from epoch+1
+        start_epoch = snapshot.get_metadata()["epoch"]+1
+        if (start_epoch > num_epochs):
+            print(f"Snapshot '{args.from_snapshot}' already trained for {start_epoch-1} epochs.  Nothing to do.")
+            return
+        print(f"Resuming training from epoch {start_epoch}.")
     else:
         # load dataset
         dataset = VQADataset(dataset_type)
@@ -43,7 +51,8 @@ def train_model(args):
         # load model
         model = VQAModel(len(dataset.answer_classes))
 
-        start_epoch = 0
+        # epoch's are 1-indexed for ease of understanding by the user
+        start_epoch = 1
 
     # If there's a GPU available...
     if torch.cuda.is_available():
@@ -77,8 +86,8 @@ def train_model(args):
     optimizer = Adam(model.parameters())
 
     print("Beginning training.")
-    for epoch in range(start_epoch, num_epochs):
-        print(f"Epoch {epoch + 1}/{num_epochs}")
+    for epoch in range(start_epoch, num_epochs+1):
+        print(f"Epoch {epoch}/{num_epochs}")
         running_loss = 0.0
         model.train()  # set model to training mode
 
@@ -107,19 +116,19 @@ def train_model(args):
                 print(f"\nBatch {idx}, Average Loss: {running_loss / (idx * images.size(0)):.4f}")
 
         epoch_loss = running_loss / len(dataset)
-        print(f"Epoch {epoch + 1} loss: {epoch_loss:.4f}")
+        print(f"Epoch {epoch} loss: {epoch_loss:.4f}")
 
         # Save a snapshot after each epoch
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        snapshot_name = f"snapshot_{model.MODEL_NAME}_{timestamp}_epoch_{epoch + 1}"
+        snapshot_name = f"snapshot_{model.MODEL_NAME}_epoch_{epoch}_{timestamp}"
         print(f"Saving snapshot '{snapshot_name}'")
 
         # Save the model and dataset state
         if isModelParallel:
             # When saving a parallel model, the original model is wrapped and stored in model.module.
-            snapshot_manager.save_snapshot(snapshot_name, model.module, dataset, epoch, lightweight=False)
+            snapshot_manager.save_snapshot(snapshot_name, model.module, dataset, epoch, loss, lightweight=args.lightweight_snapshots)
         else:
-            snapshot_manager.save_snapshot(snapshot_name, model, dataset, epoch, lightweight=False)
+            snapshot_manager.save_snapshot(snapshot_name, model, dataset, epoch, loss, lightweight=args.lightweight_snapshots)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Train a VQA model')
@@ -127,5 +136,6 @@ if __name__ == "__main__":
     parser.add_argument('--dataset-type', type=str, default='train', help='Dataset type to train on (train, validation, mini)')
     parser.add_argument('--num-epochs', type=int, default=5, help='Number of epochs to train for')
     parser.add_argument('--from-snapshot', type=str, help="Snapshot name to load the model and dataset from.")
+    parser.add_argument('--lightweight-snapshots', action='store_true', help="Use this flag to save lightweight snapshots only (doesn't save pretrained bert or vit weights)")
     args = parser.parse_args()
     train_model(args)
