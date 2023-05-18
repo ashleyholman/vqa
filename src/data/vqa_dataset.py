@@ -16,13 +16,18 @@ TRAIN_ANNOTATIONS_JSON_FILE_NAME = 'data/v2_mscoco_train2014_annotations.json'
 TRAIN_QUESTIONS_JSON_FILE_NAME = 'data/v2_OpenEnded_mscoco_train2014_questions.json'
 TRAIN_IMAGE_PREFIX = 'data/train2014/COCO_train2014_'
 
+# Validation data set
+VALIDATION_ANNOTATIONS_JSON_FILE_NAME = 'data/v2_mscoco_val2014_annotations.json'
+VALIDATION_QUESTIONS_JSON_FILE_NAME = 'data/v2_OpenEnded_mscoco_val2014_questions.json'
+VALIDATION_IMAGE_PREFIX = 'data/val2014/COCO_val2014_'
+
 # Mini data set (tiny subset of training data, for testing code locally)
 MINI_ANNOTATIONS_JSON_FILE_NAME = 'data/subset_annotations.json'
 MINI_QUESTIONS_JSON_FILE_NAME = 'data/subset_questions.json'
 MINI_IMAGE_PREFIX = 'data/train2014/COCO_train2014_'
 
 class VQADataset(Dataset):
-    def __init__(self, settype='train'):
+    def __init__(self, settype='train', answer_classes=[]):
         self.images = []
         self.input_ids = []
         self.attention_masks = []
@@ -39,6 +44,10 @@ class VQADataset(Dataset):
           annotations_json_file = TRAIN_ANNOTATIONS_JSON_FILE_NAME
           questions_json_file = TRAIN_QUESTIONS_JSON_FILE_NAME
           self.image_prefix = TRAIN_IMAGE_PREFIX
+        elif settype == 'validation':
+          annotations_json_file = VALIDATION_ANNOTATIONS_JSON_FILE_NAME
+          questions_json_file = VALIDATION_QUESTIONS_JSON_FILE_NAME
+          self.image_prefix = VALIDATION_IMAGE_PREFIX
         elif settype == 'mini':
           annotations_json_file = MINI_ANNOTATIONS_JSON_FILE_NAME
           questions_json_file = MINI_QUESTIONS_JSON_FILE_NAME
@@ -55,7 +64,15 @@ class VQADataset(Dataset):
         # Create a reverse mapping from question_id to annotation
         question_to_annotation = {a['question_id']: a for a in annotations}
 
-        self.answer_classes = VQADataset.build_answer_classes(annotations)
+        if not answer_classes:
+            # Caller did not specify answer_classes, so build them from the most common answers
+            print("Building our own answer classes")
+            self.answer_classes = VQADataset.build_answer_classes(annotations)
+        else:
+            print("Using caller-specified answer classes.")
+            self.answer_classes = answer_classes
+        # apply the answer classes as answer_class_id's to the annotations set
+        VQADataset.apply_answer_classes(annotations, self.answer_classes)
         print(f"Answer classes: {self.answer_classes}")
 
         # Our dataset will have one sample per question, each question will have one image and one answer class.
@@ -93,6 +110,9 @@ class VQADataset(Dataset):
         # Add 'other' class
         answer_classes.append('other')
 
+        return answer_classes
+
+    def apply_answer_classes(annotations, answer_classes):
         # Map each answer to its class
         for annotation in annotations:
             answer = annotation['multiple_choice_answer']
@@ -103,8 +123,6 @@ class VQADataset(Dataset):
             else:
                 annotation['answer_class_id'] = answer_classes.index(answer)
                 #print(f"Answer \"{answer}\" is in the top 999.. assigning with index {top_answers.index(answer)}")
-
-        return answer_classes
 
     @lru_cache(maxsize=1000)
     def preprocess_image(self, image_id):
