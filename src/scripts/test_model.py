@@ -1,5 +1,5 @@
+import argparse
 import torch
-import json
 
 from tqdm import tqdm
 from torch.utils.data import DataLoader
@@ -7,6 +7,7 @@ import os
 
 from src.data.vqa_dataset import VQADataset
 from src.models.vqa_model import VQAModel
+from src.snapshots.vqa_snapshot_manager import VQASnapshotManager
 
 def top_k_correct(output, target, k):
     """Computes the count of correct predictions in the top k outputs."""
@@ -20,32 +21,37 @@ def top_k_correct(output, target, k):
         correct_k = correct[:k].reshape(-1).float().sum()
         return correct_k
 
-def main():
-    num_workers = int(os.getenv('VQA_NUM_DATALOADER_WORKERS', 1))
-    dataset_type = os.getenv('VQA_DATASET_TYPE', "mini")
+def main(args):
+    num_workers = args.num_dataloader_workers
+    dataset_type = args.dataset_type
+
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     print(f"Torch device: {device}")
     print(f"Using {num_workers} DataLoader workers")
+    print(f"Using dataset type: {dataset_type}")
 
-    # Load the answer_classes
-    with open('vqa_answer_classes.json', 'r') as f:
-        answer_classes = json.load(f)
-        print("Loaded answer classes")
+    snapshot_manager = VQASnapshotManager()
 
-    # load dataset
-    dataset = VQADataset(dataset_type, answer_classes)
+    if args.from_snapshot:
+        model, dataset = snapshot_manager.load_snapshot(args.from_snapshot, dataset_type)
+        if model is None or dataset is None:
+            print(f"Snapshot '{args.from_snapshot}' not found.")
+            return
+        print(f"Using snapshot: {args.from_snapshot}")
+    else:
+        # instantiate dataset and model from scratch
+        dataset = VQADataset(dataset_type)
+        model = VQAModel(len(dataset.answer_classes))
+
+        print("Using untrained model")
+
+    model.to(device)
 
     # Store the model's predictions and the correct answers here
     predictions = []
     correct_answers = []
     top_5_correct = 0
-
-    # load model
-    model = VQAModel(len(dataset.answer_classes))
-    # load model weights
-    model.load_state_dict(torch.load('vqa_model_weights.pth'))
-    model.to(device)
 
     # Create a DataLoader to handle batching of the dataset
     data_loader = DataLoader(dataset, batch_size=16, num_workers=num_workers, shuffle=False)
@@ -78,8 +84,13 @@ def main():
     # predictions and the correct answers, respectively.
     accuracy = sum(p == ca for p, ca in zip(predictions, correct_answers)) / len(predictions) * 100
     top_5_acc = (top_5_correct / len(predictions)) * 100
-    print(f"\nUntrained model accuracy: {accuracy:.2f}%")
+    print(f"\nModel accuracy: {accuracy:.2f}%")
     print(f'Top-5 Accuracy: {top_5_acc:.2f}%')
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--from-snapshot', type=str, help="Snapshot name to load the model and dataset from.")
+    parser.add_argument('--dataset-type', type=str, help="Dataset type to use (train, validation, mini, etc.)", default="mini")
+    parser.add_argument('--num-dataloader-workers', type=int, help="Number of dataloader workers to use.", default=1)
+    args = parser.parse_args()
+    main(args)

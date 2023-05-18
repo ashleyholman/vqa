@@ -4,6 +4,8 @@ import torch.nn as nn
 from transformers import ViTModel, BertModel
 
 class VQAModel(nn.Module):
+    MODEL_NAME = "v1"
+
     def __init__(self, num_answer_classes, hidden_size=768):
         super().__init__()
 

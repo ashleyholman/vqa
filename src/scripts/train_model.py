@@ -3,19 +3,24 @@ from torch.optim import Adam
 from torch.utils.data import DataLoader
 import torch.nn as nn
 import os
-import json
+from datetime import datetime
 
 from tqdm import tqdm
 from src.data.vqa_dataset import VQADataset
 from src.models.vqa_model import VQAModel
 from torch.nn.functional import cross_entropy
 
+from src.snapshots.vqa_snapshot_manager import VQASnapshotManager
+
 def train_model():
     num_workers = int(os.getenv('VQA_NUM_DATALOADER_WORKERS', 1))
-    dataset_type = "train"
+    dataset_type = os.getenv('VQA_DATASET_TYPE', "mini")
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     num_epochs = int(os.getenv('VQA_NUM_EPOCHS', 5))
     isModelParallel = False
+
+    # Create the snapshot manager
+    snapshot_manager = VQASnapshotManager()
 
     print(f"Torch device: {device}")
     print(f"Using {num_workers} DataLoader workers")
@@ -90,16 +95,17 @@ def train_model():
         epoch_loss = running_loss / len(dataset)
         print(f"Epoch {epoch + 1} loss: {epoch_loss:.4f}")
 
-    # Save model weights
-    if isModelParallel:
-        # When saving a paraallel model, the original model is wrapped and stored in model.module.
-        torch.save(model.module.state_dict(), 'vqa_model_weights.pth')
-    else:
-        torch.save(model.state_dict(), 'vqa_model_weights.pth')
+        # Save a snapshot after each epoch
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        snapshot_name = f"snapshot_{model.MODEL_NAME}_{timestamp}_epoch_{epoch + 1}"
+        print(f"Saving snapshot '{snapshot_name}'")
 
-    # Save the answer_classes
-    with open('vqa_answer_classes.json', 'w') as f:
-        json.dump(dataset.answer_classes, f)
+        # Save the model and dataset state
+        if isModelParallel:
+            # When saving a parallel model, the original model is wrapped and stored in model.module.
+            snapshot_manager.save_snapshot(snapshot_name, model.module, dataset)
+        else:
+            snapshot_manager.save_snapshot(snapshot_name, model, dataset, lightweight=True)
 
 if __name__ == "__main__":
     train_model()
