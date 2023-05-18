@@ -1,4 +1,5 @@
 import torch
+import json
 
 from tqdm import tqdm
 from torch.utils.data import DataLoader
@@ -27,8 +28,13 @@ def main():
     print(f"Torch device: {device}")
     print(f"Using {num_workers} DataLoader workers")
 
+    # Load the answer_classes
+    with open('vqa_answer_classes.json', 'r') as f:
+        answer_classes = json.load(f)
+        print("Loaded answer classes")
+
     # load dataset
-    dataset = VQADataset(dataset_type)
+    dataset = VQADataset(dataset_type, answer_classes)
 
     # Store the model's predictions and the correct answers here
     predictions = []
@@ -37,6 +43,9 @@ def main():
 
     # load model
     model = VQAModel(len(dataset.answer_classes))
+    # load model weights
+    model.load_state_dict(torch.load('vqa_model_weights.pth'))
+    model.to(device)
 
     # Create a DataLoader to handle batching of the dataset
     data_loader = DataLoader(dataset, batch_size=16, num_workers=num_workers, shuffle=False)
