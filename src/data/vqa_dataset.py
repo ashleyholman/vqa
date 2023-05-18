@@ -66,14 +66,13 @@ class VQADataset(Dataset):
 
         if not answer_classes:
             # Caller did not specify answer_classes, so build them from the most common answers
-            print("Building our own answer classes")
+            print("Building answer classes from the most common answers...")
             self.answer_classes = VQADataset.build_answer_classes(annotations)
         else:
-            print("Using caller-specified answer classes.")
             self.answer_classes = answer_classes
         # apply the answer classes as answer_class_id's to the annotations set
         VQADataset.apply_answer_classes(annotations, self.answer_classes)
-        print(f"Answer classes: {self.answer_classes}")
+        #print(f"Answer classes: {self.answer_classes}")
 
         # Our dataset will have one sample per question, each question will have one image and one answer class.
         # So, iterate over the questions to preprocess the dataset one sample at a time
