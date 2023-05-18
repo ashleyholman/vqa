@@ -1,3 +1,4 @@
+import argparse
 import torch
 from torch.optim import Adam
 from torch.utils.data import DataLoader
@@ -12,9 +13,9 @@ from torch.nn.functional import cross_entropy
 
 from src.snapshots.vqa_snapshot_manager import VQASnapshotManager
 
-def train_model():
-    num_workers = int(os.getenv('VQA_NUM_DATALOADER_WORKERS', 1))
-    dataset_type = os.getenv('VQA_DATASET_TYPE', "mini")
+def train_model(args):
+    num_workers = args.num_dataloader_workers
+    dataset_type = args.dataset_type
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     num_epochs = int(os.getenv('VQA_NUM_EPOCHS', 5))
     isModelParallel = False
@@ -103,9 +104,14 @@ def train_model():
         # Save the model and dataset state
         if isModelParallel:
             # When saving a parallel model, the original model is wrapped and stored in model.module.
-            snapshot_manager.save_snapshot(snapshot_name, model.module, dataset)
+            snapshot_manager.save_snapshot(snapshot_name, model.module, dataset, lightweight=False)
         else:
-            snapshot_manager.save_snapshot(snapshot_name, model, dataset, lightweight=True)
+            snapshot_manager.save_snapshot(snapshot_name, model, dataset, lightweight=False)
 
 if __name__ == "__main__":
-    train_model()
+    parser = argparse.ArgumentParser(description='Train a VQA model')
+    parser.add_argument('--num-dataloader-workers', type=int, default=1, help='Number of dataloader workers')
+    parser.add_argument('--dataset-type', type=str, default='train', help='Dataset type to train on (train, validation, mini)')
+    parser.add_argument('--num-epochs', type=int, default=5, help='Number of epochs to train for')
+    args = parser.parse_args()
+    train_model(args)

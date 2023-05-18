@@ -90,7 +90,7 @@ def main(args):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--from-snapshot', type=str, help="Snapshot name to load the model and dataset from.")
-    parser.add_argument('--dataset-type', type=str, help="Dataset type to use (train, validation, mini, etc.)", default="mini")
-    parser.add_argument('--num-dataloader-workers', type=int, help="Number of dataloader workers to use.", default=1)
+    parser.add_argument('--dataset-type', type=str, default="validation", help="Dataset type to use (train, validation, mini, etc.)")
+    parser.add_argument('--num-dataloader-workers', type=int, default=1, help="Number of dataloader workers to use.")
     args = parser.parse_args()
     main(args)
