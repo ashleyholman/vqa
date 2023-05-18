@@ -33,9 +33,15 @@ os.makedirs(data_dir, exist_ok=True)
 
 # Define the URLs of the data to be downloaded
 urls = [
-    "http://images.cocodataset.org/zips/train2014.zip",
+    # Training set
+    #"http://images.cocodataset.org/zips/train2014.zip",
     "https://s3.amazonaws.com/cvmlp/vqa/mscoco/vqa/v2_Questions_Train_mscoco.zip",
-    "https://s3.amazonaws.com/cvmlp/vqa/mscoco/vqa/v2_Annotations_Train_mscoco.zip"
+    "https://s3.amazonaws.com/cvmlp/vqa/mscoco/vqa/v2_Annotations_Train_mscoco.zip",
+
+     # Validation set
+     "http://images.cocodataset.org/zips/val2014.zip",
+     "https://s3.amazonaws.com/cvmlp/vqa/mscoco/vqa/v2_Questions_Val_mscoco.zip",
+     "https://s3.amazonaws.com/cvmlp/vqa/mscoco/vqa/v2_Annotations_Val_mscoco.zip"
 ]
 
 # Iterate over each URL
