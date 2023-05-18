@@ -63,7 +63,7 @@ class VQASnapshotManager:
 
         return Snapshot(model, dataset, optimizer, metadata)
 
-    def save_snapshot(self, snapshot_name, model, optimizer, dataset, epoch, loss, lightweight=False):
+    def save_snapshot(self, snapshot_name, model, optimizer, dataset, epoch, loss, lightweight=False, skipS3Storage=False):
         try:
             # ensure snapshot dir exists
             os.makedirs(os.path.join(self.LOCAL_CACHE_DIR, snapshot_name), exist_ok=True)
@@ -92,14 +92,16 @@ class VQASnapshotManager:
             with open(os.path.join(self.LOCAL_CACHE_DIR, snapshot_name, "metadata.json"), 'w') as f:
                 json.dump(metadata, f)
 
-            self._save_to_s3(snapshot_name)
+            if not skipS3Storage:
+                self._save_to_s3(snapshot_name)
         except Exception as e:
             print(f'Failed to save snapshot: {e}')
 
     def _populate_cache(self, snapshot_name):
         local_snapshot_path = os.path.join(self.LOCAL_CACHE_DIR, snapshot_name)
         if not (os.path.exists(os.path.join(local_snapshot_path, "model_weights.pth")) and 
-                os.path.exists(os.path.join(local_snapshot_path, "metadata.json"))):
+                os.path.exists(os.path.join(local_snapshot_path, "metadata.json")) and
+                os.path.exists(os.path.join(local_snapshot_path, "optimizer_state.pth"))):
             self._load_from_s3(snapshot_name)
 
     def _load_from_s3(self, snapshot_name):

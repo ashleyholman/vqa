@@ -96,6 +96,9 @@ def train_model(args):
     data_loader = DataLoader(dataset, batch_size=16, num_workers=num_workers, shuffle=True)
 
     print("Beginning training.")
+    if (args.skip_s3_storage):
+        print("WARNING: Skipping S3 storage of snapshots.  Snapshots will only be stored locally.")
+
     for epoch in range(start_epoch, num_epochs+1):
         print(f"Epoch {epoch}/{num_epochs}")
         running_loss = 0.0
@@ -136,9 +139,9 @@ def train_model(args):
         # Save the model and dataset state
         if isModelParallel:
             # When saving a parallel model, the original model is wrapped and stored in model.module.
-            snapshot_manager.save_snapshot(snapshot_name, model.module, optimizer, dataset, epoch, loss, lightweight=args.lightweight_snapshots)
+            snapshot_manager.save_snapshot(snapshot_name, model.module, optimizer, dataset, epoch, loss, lightweight=args.lightweight_snapshots, skipS3Storage=args.skip_s3_storage)
         else:
-            snapshot_manager.save_snapshot(snapshot_name, model, optimizer, dataset, epoch, loss, lightweight=args.lightweight_snapshots)
+            snapshot_manager.save_snapshot(snapshot_name, model, optimizer, dataset, epoch, loss, lightweight=args.lightweight_snapshots, skipS3Storage=args.skip_s3_storage)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Train a VQA model')
@@ -147,5 +150,6 @@ if __name__ == "__main__":
     parser.add_argument('--num-epochs', type=int, default=5, help='Number of epochs to train for')
     parser.add_argument('--from-snapshot', type=str, help="Snapshot name to load the model and dataset from.")
     parser.add_argument('--lightweight-snapshots', action='store_true', help="Use this flag to save lightweight snapshots only (doesn't save pretrained bert or vit weights)")
+    parser.add_argument('--skip-s3-storage', action='store_true', help='Use this flag to skip storing new snapshots in S3')
     args = parser.parse_args()
     train_model(args)
