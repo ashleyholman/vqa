@@ -133,7 +133,7 @@ def train_model(args):
 
         # Save a snapshot after each epoch
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        snapshot_name = f"snapshot_{model.MODEL_NAME}_epoch_{epoch}_{timestamp}"
+        snapshot_name = f"snapshot_{model.MODEL_NAME}_{dataset_type}_epoch_{epoch}_{timestamp}"
         print(f"Saving snapshot '{snapshot_name}'")
 
         # Save the model and dataset state
