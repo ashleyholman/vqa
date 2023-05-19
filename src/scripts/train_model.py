@@ -13,6 +13,7 @@ from torch.nn.functional import cross_entropy
 
 from src.snapshots.vqa_snapshot_manager import VQASnapshotManager
 from src.snapshots.snapshot import Snapshot
+from src.metrics.metrics_manager import MetricsManager
 
 def train_model(args):
     num_workers = args.num_dataloader_workers
@@ -21,8 +22,8 @@ def train_model(args):
     num_epochs = args.num_epochs
     isModelParallel = False
 
-    # Create the snapshot manager
     snapshot_manager = VQASnapshotManager()
+    metrics_manager = MetricsManager()
 
     print(f"Torch device: {device}")
     print(f"Using {num_workers} DataLoader workers")
@@ -130,6 +131,7 @@ def train_model(args):
 
         epoch_loss = running_loss / len(dataset)
         print(f"Epoch {epoch} loss: {epoch_loss:.4f}")
+        metrics_manager.store_training_metrics(model.MODEL_NAME, dataset_type, epoch, epoch_loss)
 
         # Save a snapshot after each epoch
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")

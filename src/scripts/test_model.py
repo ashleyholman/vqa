@@ -8,6 +8,7 @@ import os
 from src.data.vqa_dataset import VQADataset
 from src.models.vqa_model import VQAModel
 from src.snapshots.vqa_snapshot_manager import VQASnapshotManager
+from src.metrics.metrics_manager import MetricsManager
 
 def top_k_correct(output, target, k):
     """Computes the count of correct predictions in the top k outputs."""
@@ -32,6 +33,7 @@ def main(args):
     print(f"Using dataset type: {dataset_type}")
 
     snapshot_manager = VQASnapshotManager()
+    metrics_manager = MetricsManager()
 
     if args.from_snapshot:
         snapshot = snapshot_manager.load_snapshot(args.from_snapshot, dataset_type)
@@ -86,6 +88,16 @@ def main(args):
     top_5_acc = (top_5_correct / len(predictions)) * 100
     print(f"\nModel accuracy: {accuracy:.2f}%")
     print(f'Top-5 Accuracy: {top_5_acc:.2f}%')
+
+    # Determine what epoch number this model has been trained to, for storing performance metrics.
+    # If this model wasn't loaded from a snapshot, it means it was an untrained model (epoch 0)
+    if args.from_snapshot:
+        epoch = snapshot.get_metadata()['epoch']
+    else:
+        epoch = 0
+
+    # Store the metrics to DynamoDB for later reporting
+    metrics_manager.store_performance_metrics(model.MODEL_NAME, dataset_type, epoch, accuracy, top_5_acc)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()

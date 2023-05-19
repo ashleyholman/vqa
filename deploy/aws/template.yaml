@@ -36,6 +36,24 @@ Resources:
     Properties:
       BucketName: vqa-ap-southeast-1
 
+  VQADynamoDBTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: vqa
+      AttributeDefinitions:
+        - AttributeName: PK
+          AttributeType: S
+        - AttributeName: SK
+          AttributeType: S
+      KeySchema:
+        - AttributeName: PK
+          KeyType: HASH
+        - AttributeName: SK
+          KeyType: RANGE
+      ProvisionedThroughput:
+        ReadCapacityUnits: 5
+        WriteCapacityUnits: 5
+
   MyInstanceProfile:
     Type: AWS::IAM::InstanceProfile
     Properties:
@@ -75,6 +93,18 @@ Resources:
             - s3:ListBucket
             Resource:
             - !Sub arn:aws:s3:::${VqaBucket}
+      - PolicyName: VqaTrainingInferenceDynamoDBPolicy
+        PolicyDocument:
+          Version: 2012-10-17
+          Statement:
+          - Effect: Allow
+            Action:
+            - dynamodb:PutItem
+            - dynamodb:GetItem
+            - dynamodb:Query
+            - dynamodb:Scan
+            Resource:
+            - !GetAtt VQADynamoDBTable.Arn
 
   VQACPUOnlyLaunchTemplate:
     Type: AWS::EC2::LaunchTemplate
