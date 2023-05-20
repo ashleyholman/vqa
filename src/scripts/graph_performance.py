@@ -4,29 +4,24 @@ from matplotlib.ticker import MaxNLocator
 from src.metrics.metrics_manager import MetricsManager
 
 def fetch_metrics(model_name):
-    metrics_manager = MetricsManager()
+    metrics_manager = MetricsManager('graph-performance')
 
-    # fetch the training metrics from the training dataset
-    training_metrics = metrics_manager.get_metrics('train_model', model_name, 'train')
-    validation_metrics = metrics_manager.get_metrics('test_model', model_name, 'validation')
+    # fetch the metrics from the training and validation datasets
+    datasets = {
+        'training': metrics_manager.get_metrics('train_model', model_name, 'train'),
+        'validation': metrics_manager.get_metrics('test_model', model_name, 'validation')
+    }
 
     data = {}
 
-    for item in training_metrics:
-        epoch = item['epoch']
-        if epoch not in data:
-            data[epoch] = {}
-        data[epoch]['training_loss'] = float(item['loss'])
-        data[epoch]['training_accuracy'] = float(item['accuracy'])
-        data[epoch]['training_top_5_acc'] = float(item['top_5_acc'])
-
-    for item in validation_metrics:
-        epoch = item['epoch']
-        if epoch not in data:
-            data[epoch] = {}
-        data[epoch]['validation_loss'] = float(item['loss'])
-        data[epoch]['validation_accuracy'] = float(item['accuracy'])
-        data[epoch]['validation_top_5_acc'] = float(item['top_5_acc'])
+    for prefix, metrics in datasets.items():
+        for item in metrics:
+            epoch = int(item['epoch'])
+            if epoch not in data:
+                data[epoch] = {'epoch': epoch}
+            for key, value in item.items():
+                if key not in ['epoch', 'dataset_type', 'timestamp', 'model_name']:
+                    data[epoch][f'{prefix}_{key}'] = float(value)
 
     return data
 
@@ -77,16 +72,19 @@ def plot_graph(data):
     plt.show()
 
 def print_csv(data):
-    epochs = sorted(data.keys())
-    print("epoch,training_loss,training_accuracy,training_top_5_accuracy,validation_loss,validation_accuracy,validation_top_5_acc")
-    for epoch in epochs:
-        print(f"{epoch},"
-                f"{data[epoch].get('training_loss')},"
-                f"{data[epoch].get('training_accuracy')},"
-                f"{data[epoch].get('training_top_5_acc')},"
-                f"{data[epoch].get('validation_loss')},"
-                f"{data[epoch].get('validation_accuracy')},"
-                f"{data[epoch].get('validation_top_5_acc')}")
+    header = ['epoch', 'training_loss']
+
+    # Collect all unique keys from the data
+    for epoch in data.keys():
+        for key in data[epoch].keys():
+            if key not in header:
+                header.append(key)
+
+    print(','.join(header))
+
+    for epoch in sorted(data.keys()):
+        row = [str(data[epoch].get(key, '')) for key in header]
+        print(','.join(row))
 
 def main():
     parser = argparse.ArgumentParser(description='Fetch data from DynamoDB and plot the graph.')

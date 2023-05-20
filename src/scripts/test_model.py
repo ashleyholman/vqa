@@ -11,7 +11,10 @@ from src.data.vqa_dataset import VQADataset
 from src.models.vqa_model import VQAModel
 from src.snapshots.vqa_snapshot_manager import VQASnapshotManager
 from src.metrics.metrics_manager import MetricsManager
-from src.metrics.performance_tracker import PerformanceTracker, PerformanceMetrics
+from src.metrics.performance_tracker import PerformanceTracker
+
+# source name for metrics that we emit
+METRICS_SOURCE = "test_model"
 
 def top_k_correct(output, target, k):
     """Computes the count of correct predictions in the top k outputs."""
@@ -36,8 +39,8 @@ def main(args):
     print(f"Using dataset type: {dataset_type}")
 
     snapshot_manager = VQASnapshotManager()
-    metrics_manager = MetricsManager()
-    performance_tracker = PerformanceTracker("test_model", dataset_type)
+    metrics_manager = MetricsManager(METRICS_SOURCE)
+    performance_tracker = PerformanceTracker()
 
     if args.from_snapshot:
         snapshot = snapshot_manager.load_snapshot(args.from_snapshot, dataset_type, device)
@@ -82,8 +85,7 @@ def main(args):
             performance_tracker.update_metrics(logits, labels)
 
     # Print performance report
-    metrics = performance_tracker.get_metrics()
-    metrics.print_report()
+    performance_tracker.print_report()
 
     # Determine what epoch number this model has been trained to, for storing performance metrics.
     # If this model wasn't loaded from a snapshot, it means it was an untrained model (epoch 0)
@@ -93,7 +95,7 @@ def main(args):
         epoch = 0
 
     # Store the metrics to DynamoDB for later reporting
-    metrics_manager.store_performance_metrics(model.MODEL_NAME, dataset_type, epoch, metrics)
+    metrics_manager.store_performance_metrics(model.MODEL_NAME, dataset_type, epoch, performance_tracker.get_metrics())
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()

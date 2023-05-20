@@ -14,7 +14,10 @@ from torch.nn.functional import cross_entropy
 from src.snapshots.vqa_snapshot_manager import VQASnapshotManager
 from src.snapshots.snapshot import Snapshot
 from src.metrics.metrics_manager import MetricsManager
-from src.metrics.performance_tracker import PerformanceTracker, PerformanceMetrics
+from src.metrics.performance_tracker import PerformanceTracker
+
+# source name for metrics that we emit
+METRICS_SOURCE = "train_model"
 
 def train_model(args):
     num_workers = args.num_dataloader_workers
@@ -24,8 +27,8 @@ def train_model(args):
     isModelParallel = False
 
     snapshot_manager = VQASnapshotManager()
-    metrics_manager = MetricsManager()
-    performance_tracker = PerformanceTracker("train_model", dataset_type)
+    metrics_manager = MetricsManager(METRICS_SOURCE)
+    performance_tracker = PerformanceTracker()
 
     print(f"Torch device: {device}")
     print(f"Using {num_workers} DataLoader workers")

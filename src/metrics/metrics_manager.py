@@ -4,12 +4,11 @@ from botocore.exceptions import ClientError
 from datetime import datetime
 from decimal import Decimal
 
-from src.metrics.performance_tracker import PerformanceMetrics
-
 class MetricsManager:
-    def __init__(self):
+    def __init__(self, source: str):
         self.dynamodb = boto3.resource('dynamodb')
         self.table = self.dynamodb.Table('vqa')
+        self.source = source
 
     def _get_ddb_item(self, pk, sk):
         try:
@@ -24,8 +23,8 @@ class MetricsManager:
         else:
             return response.get('Item')
 
-    def store_performance_metrics(self, model_name, dataset_type, epoch, metrics: PerformanceMetrics, overwriteExisting=True):
-        pk = f"{metrics.source}:{model_name}:{dataset_type}"
+    def store_performance_metrics(self, model_name, dataset_type, epoch, metrics: dict, overwriteExisting=True):
+        pk = f"{self.source}:{model_name}:{dataset_type}"
         sk = str(epoch)
 
         if not overwriteExisting:
@@ -39,19 +38,23 @@ class MetricsManager:
 
         # Save metrics into DynamoDB
         timestamp = datetime.utcnow().isoformat()
-        self.table.put_item(
-           Item={
-                'PK': pk,
-                'SK': sk,
-                'model_name': model_name,
-                'dataset_type': dataset_type,
-                'epoch': epoch,
-                'accuracy': Decimal(f"{metrics.accuracy:.10f}"),
-                'top_5_acc': Decimal(f"{metrics.top_5_accuracy:.10f}"),
-                'loss': Decimal(f"{metrics.loss:.10f}"),
-                'timestamp': timestamp
-            }
-        )
+
+        metrics_item = {
+            'PK': pk,
+            'SK': sk,
+            'model_name': model_name,
+            'dataset_type': dataset_type,
+            'epoch': epoch,
+            'timestamp': timestamp
+        }
+
+        for metric_name, metric_value in metrics.items():
+            if metric_name in metrics_item:
+                print(f"WARNING: Metric name '{metric_name}' is a reserved key and cannot be overwritten. Skipping this metric.")
+                continue
+            metrics_item[metric_name] = Decimal(f"{metric_value:.10f}")
+
+        self.table.put_item(Item=metrics_item)
 
     def get_metrics(self, source, model_name, dataset_type):
         pk = f"{source}:{model_name}:{dataset_type}"

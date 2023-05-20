@@ -5,33 +5,6 @@ import torch
 from torch.nn.functional import cross_entropy
 from sklearn.metrics import precision_score, recall_score, f1_score
 
-@dataclass
-class PerformanceMetrics:
-    source: str
-    dataset_type: str
-    accuracy: float
-    top_5_accuracy: float
-    loss: float
-    micro_avg_precision: float
-    macro_avg_precision: float
-    micro_avg_recall: float
-    macro_avg_recall: float
-    micro_avg_f1: float
-    macro_avg_f1: float
-
-    def print_report(self):
-        print("== Performance Metrics ==")
-        print(f"Accuracy: {self.accuracy:.4f}")
-        print(f"Top 5 Accuracy: {self.top_5_accuracy:.4f}")
-        print(f"Loss: {self.loss:.4f}")
-        print(f"Micro Avg Precision: {self.micro_avg_precision:.4f}")
-        print(f"Macro Avg Precision: {self.macro_avg_precision:.4f}")
-        print(f"Micro Avg Recall: {self.micro_avg_recall:.4f}")
-        print(f"Macro Avg Recall: {self.macro_avg_recall:.4f}")
-        print(f"Micro Avg F1: {self.micro_avg_f1:.4f}")
-        print(f"Macro Avg F1: {self.macro_avg_f1:.4f}")
-
-
 class Metric(ABC):
     @abstractmethod
     def reset(self):
@@ -152,19 +125,17 @@ class F1Metric(Metric):
         return f1_score(self.correct_answers, self.predictions, average=self.average, zero_division=1) * 100
 
 class PerformanceTracker:
-    def __init__(self, source, dataset_type):
-        self.source = source
-        self.dataset_type = dataset_type
+    def __init__(self):
         self.metrics = {
             "accuracy": AccuracyMetric(),
             "top_5_accuracy": TopKAccuracyMetric(5),
             "loss": LossMetric(),
-            "micro_avg_precision": PrecisionMetric('micro'),
-            "macro_avg_precision": PrecisionMetric('macro'),
-            "micro_avg_recall": RecallMetric('micro'),
-            "macro_avg_recall": RecallMetric('macro'),
-            "micro_avg_f1": F1Metric('micro'),
-            "macro_avg_f1": F1Metric('macro'),
+            "precision_micro": PrecisionMetric("micro"),
+            "precision_macro": PrecisionMetric("macro"),
+            "recall_micro": RecallMetric("micro"),
+            "recall_macro": RecallMetric("macro"),
+            "f1_score_micro": F1Metric("micro"),
+            "f1_score_macro": F1Metric("macro")
         }
         self.reset()
 
@@ -177,5 +148,9 @@ class PerformanceTracker:
             metric.update(logits, labels)
 
     def get_metrics(self):
-        performance_metrics = {name: metric.value() for name, metric in self.metrics.items()}
-        return PerformanceMetrics(self.source, self.dataset_type, **performance_metrics)
+        return {name: metric.value() for name, metric in self.metrics.items()}
+
+    def print_report(self):
+        print("== Performance Metrics ==")
+        for metric_name, metric in self.metrics.items():
+            print(f"{metric_name}: {metric.value():.4f}")
