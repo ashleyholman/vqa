@@ -78,7 +78,7 @@ def train_model(args):
         model = VQAModel(len(dataset.answer_classes))
 
         # Create a new optimizer
-        optimizer = Adam(model.parameters())
+        optimizer = Adam(model.parameters(), lr=1e-4)
 
         # epoch's are 1-indexed for ease of understanding by the user
         start_epoch = 1
@@ -150,11 +150,10 @@ def train_model(args):
                 print(f"\nEpoch {epoch}, Batch {idx}, Average Loss: {performance_tracker.get_metrics().loss:.4f}")
 
         # Report the performance metrics
-        metrics = performance_tracker.get_metrics()
-        metrics.print_report()
+        performance_tracker.print_report()
 
         # Store the metrics 
-        metrics_manager.store_performance_metrics(model.MODEL_NAME, dataset_type, epoch, metrics)
+        metrics_manager.store_performance_metrics(model.MODEL_NAME, dataset_type, epoch, performance_tracker.get_metrics())
 
         # Save a snapshot after each epoch
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -164,9 +163,9 @@ def train_model(args):
         # Save the model and dataset state
         if isModelParallel:
             # When saving a parallel model, the original model is wrapped and stored in model.module.
-            snapshot_manager.save_snapshot(snapshot_name, model.module, optimizer, dataset, epoch, metrics.loss, lightweight=args.lightweight_snapshots, skipS3Storage=args.skip_s3_storage)
+            snapshot_manager.save_snapshot(snapshot_name, model.module, optimizer, dataset, epoch, performance_tracker.get_metrics()['loss'], lightweight=args.lightweight_snapshots, skipS3Storage=args.skip_s3_storage)
         else:
-            snapshot_manager.save_snapshot(snapshot_name, model, optimizer, dataset, epoch, metrics.loss, lightweight=args.lightweight_snapshots, skipS3Storage=args.skip_s3_storage)
+            snapshot_manager.save_snapshot(snapshot_name, model, optimizer, dataset, epoch, performance_tracker.get_metrics()['loss'], lightweight=args.lightweight_snapshots, skipS3Storage=args.skip_s3_storage)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Train a VQA model')
