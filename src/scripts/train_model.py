@@ -147,7 +147,7 @@ def train_model(args):
 
             # Print average loss every 500 batches
             if idx % 500 == 0:
-                print(f"\nEpoch {epoch}, Batch {idx}, Average Loss: {performance_tracker.get_metrics().loss:.4f}")
+                print(f"\nEpoch {epoch}, Batch {idx}, Average Loss: {performance_tracker.get_metrics()['loss']:.4f}")
 
         # Report the performance metrics
         performance_tracker.print_report()
