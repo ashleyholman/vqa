@@ -5,10 +5,13 @@ from tqdm import tqdm
 from torch.utils.data import DataLoader
 import os
 
+from torch.nn.functional import cross_entropy
+
 from src.data.vqa_dataset import VQADataset
 from src.models.vqa_model import VQAModel
 from src.snapshots.vqa_snapshot_manager import VQASnapshotManager
 from src.metrics.metrics_manager import MetricsManager
+from src.metrics.performance_tracker import PerformanceTracker, PerformanceMetrics
 
 def top_k_correct(output, target, k):
     """Computes the count of correct predictions in the top k outputs."""
@@ -34,9 +37,10 @@ def main(args):
 
     snapshot_manager = VQASnapshotManager()
     metrics_manager = MetricsManager()
+    performance_tracker = PerformanceTracker("test_model", dataset_type)
 
     if args.from_snapshot:
-        snapshot = snapshot_manager.load_snapshot(args.from_snapshot, dataset_type)
+        snapshot = snapshot_manager.load_snapshot(args.from_snapshot, dataset_type, device)
         if snapshot is None:
             print(f"Snapshot '{args.from_snapshot}' not found.")
             return
@@ -51,11 +55,6 @@ def main(args):
         print("Using untrained model")
 
     model.to(device)
-
-    # Store the model's predictions and the correct answers here
-    predictions = []
-    correct_answers = []
-    top_5_correct = 0
 
     # Create a DataLoader to handle batching of the dataset
     data_loader = DataLoader(dataset, batch_size=16, num_workers=num_workers, shuffle=False)
@@ -76,18 +75,15 @@ def main(args):
             logits = model(images, input_ids, attention_mask)
             _, preds = torch.max(logits, dim=1)
 
-            # Append preds and labels to lists
-            predictions.extend(preds.tolist())
-            correct_answers.extend(labels.tolist())
-            top_5_correct_in_batch = top_k_correct(logits, labels, 5)
-            top_5_correct += top_5_correct_in_batch
+            # Calculate the loss
+            loss = cross_entropy(logits, labels)
 
-    # At this point, predictions and correct_answers are lists containing the model's
-    # predictions and the correct answers, respectively.
-    accuracy = sum(p == ca for p, ca in zip(predictions, correct_answers)) / len(predictions) * 100
-    top_5_acc = (top_5_correct / len(predictions)) * 100
-    print(f"\nModel accuracy: {accuracy:.2f}%")
-    print(f'Top-5 Accuracy: {top_5_acc:.2f}%')
+            # Update the performance tracker
+            performance_tracker.update_metrics(logits, labels)
+
+    # Print performance report
+    metrics = performance_tracker.get_metrics()
+    metrics.print_report()
 
     # Determine what epoch number this model has been trained to, for storing performance metrics.
     # If this model wasn't loaded from a snapshot, it means it was an untrained model (epoch 0)
@@ -97,7 +93,7 @@ def main(args):
         epoch = 0
 
     # Store the metrics to DynamoDB for later reporting
-    metrics_manager.store_performance_metrics(model.MODEL_NAME, dataset_type, epoch, accuracy, top_5_acc)
+    metrics_manager.store_performance_metrics(model.MODEL_NAME, dataset_type, epoch, metrics)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()

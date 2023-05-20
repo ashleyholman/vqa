@@ -14,6 +14,7 @@ from torch.nn.functional import cross_entropy
 from src.snapshots.vqa_snapshot_manager import VQASnapshotManager
 from src.snapshots.snapshot import Snapshot
 from src.metrics.metrics_manager import MetricsManager
+from src.metrics.performance_tracker import PerformanceTracker, PerformanceMetrics
 
 def train_model(args):
     num_workers = args.num_dataloader_workers
@@ -24,6 +25,7 @@ def train_model(args):
 
     snapshot_manager = VQASnapshotManager()
     metrics_manager = MetricsManager()
+    performance_tracker = PerformanceTracker("train_model", dataset_type)
 
     print(f"Torch device: {device}")
     print(f"Using {num_workers} DataLoader workers")
@@ -33,6 +35,17 @@ def train_model(args):
             snapshot = snapshot_manager.load_snapshot(args.from_snapshot, dataset_type, device)
         except Exception as e:
             print(f"Failed to load snapshot: {e}")
+            return
+
+        # Since we're resuming training, the dataset and model version we're training
+        # on should be the same as the ones in the snapshot, otherwise we'll get
+        # unexpected results.
+        if (snapshot.get_metadata()["settype"] != dataset_type):
+            print(f"ERROR: Dataset type '{dataset_type}' does not match the dataset type in the snapshot '{snapshot.get_metadata()['dataset_type']}'.")
+            return
+
+        if (snapshot.get_metadata()["model_version"] != VQAModel.MODEL_NAME):
+            print(f"ERROR: Model name '{VQAModel.MODEL_NAME}' does not match the model name in the snapshot '{snapshot.get_metadata()['model_name']}'.")
             return
 
         print(f"Using snapshot: {args.from_snapshot}")
@@ -102,7 +115,10 @@ def train_model(args):
 
     for epoch in range(start_epoch, num_epochs+1):
         print(f"Epoch {epoch}/{num_epochs}")
-        running_loss = 0.0
+
+        # reset performance metrics, as we want to track them per epoch
+        performance_tracker.reset()
+
         model.train()  # set model to training mode
 
         for idx, batch in enumerate(tqdm(data_loader), start=1):
@@ -123,15 +139,19 @@ def train_model(args):
             loss.backward()
             optimizer.step()
 
-            running_loss += loss.item() * images.size(0)
+            # Use PerformanceTracker to track the model's accuracy, loss etc
+            performance_tracker.update_metrics(logits, labels)
 
             # Print average loss every 500 batches
             if idx % 500 == 0:
-                print(f"\nBatch {idx}, Average Loss: {running_loss / (idx * images.size(0)):.4f}")
+                print(f"\nBatch {idx}, Average Loss: {performance_tracker.get_metrics().loss:.4f}")
 
-        epoch_loss = running_loss / len(dataset)
-        print(f"Epoch {epoch} loss: {epoch_loss:.4f}")
-        metrics_manager.store_training_metrics(model.MODEL_NAME, dataset_type, epoch, epoch_loss)
+        # Report the performance metrics
+        metrics = performance_tracker.get_metrics()
+        metrics.print_report()
+
+        # Store the metrics 
+        metrics_manager.store_performance_metrics(model.MODEL_NAME, dataset_type, epoch, metrics)
 
         # Save a snapshot after each epoch
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -141,9 +161,9 @@ def train_model(args):
         # Save the model and dataset state
         if isModelParallel:
             # When saving a parallel model, the original model is wrapped and stored in model.module.
-            snapshot_manager.save_snapshot(snapshot_name, model.module, optimizer, dataset, epoch, epoch_loss, lightweight=args.lightweight_snapshots, skipS3Storage=args.skip_s3_storage)
+            snapshot_manager.save_snapshot(snapshot_name, model.module, optimizer, dataset, epoch, metrics.loss, lightweight=args.lightweight_snapshots, skipS3Storage=args.skip_s3_storage)
         else:
-            snapshot_manager.save_snapshot(snapshot_name, model, optimizer, dataset, epoch, epoch_loss, lightweight=args.lightweight_snapshots, skipS3Storage=args.skip_s3_storage)
+            snapshot_manager.save_snapshot(snapshot_name, model, optimizer, dataset, epoch, metrics.loss, lightweight=args.lightweight_snapshots, skipS3Storage=args.skip_s3_storage)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Train a VQA model')

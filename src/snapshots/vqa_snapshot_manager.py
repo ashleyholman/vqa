@@ -34,10 +34,6 @@ class VQASnapshotManager:
         with open(os.path.join(self.LOCAL_CACHE_DIR, snapshot_name, "metadata.json"), 'r') as f:
             metadata = json.load(f)
 
-        # Ensure the dataset type matches
-        if metadata['settype'] != dataset_type:
-            raise ValueError(f"Snapshot '{snapshot_name}' was trained on dataset type '{metadata['settype']}', but dataset type '{dataset_type}' was requested.")
-
         # Load dataset
         dataset = VQADataset(settype=dataset_type, answer_classes=metadata['answer_classes'])
 
