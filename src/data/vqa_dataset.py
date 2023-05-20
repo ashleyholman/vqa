@@ -72,11 +72,13 @@ class VQADataset(Dataset):
         else:
             self.answer_classes = answer_classes
         # apply the answer classes as answer_class_id's to the annotations set
+        print("Applying answer classes to annotations...")
         VQADataset.apply_answer_classes(annotations, self.answer_classes)
         #print(f"Answer classes: {self.answer_classes}")
 
         # Our dataset will have one sample per question, each question will have one image and one answer class.
         # So, iterate over the questions to preprocess the dataset one sample at a time
+        print("Tokenizing question text...")
         for question in questions:
             encoding = self.bert_tokenizer.encode_plus(
                 question['question'], 
@@ -94,6 +96,7 @@ class VQADataset(Dataset):
             #image_id = question['image_id']
             #if self.images.get(image_id) is None:
             #    self.preprocess_image(image_id)
+        print("Done initialising dataset")
 
     # Our dataset has many answers per question, written by different humans.
     # But there's also an attribute called "multiple_choice_answer" which is the most common answer.

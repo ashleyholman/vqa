@@ -27,7 +27,7 @@ class VQASnapshotManager:
         # ensure caching dir exists
         os.makedirs(self.LOCAL_CACHE_DIR, exist_ok=True)
 
-    def load_snapshot(self, snapshot_name, dataset_type):
+    def load_snapshot(self, snapshot_name, dataset_type, device):
         self._populate_cache(snapshot_name)
 
         # Load the metadata
@@ -45,9 +45,14 @@ class VQASnapshotManager:
         model = VQAModel(len(dataset.answer_classes))
 
         # Load model weights
-        state_dict = torch.load(os.path.join(self.LOCAL_CACHE_DIR, snapshot_name, "model_weights.pth"))
+        state_dict = torch.load(os.path.join(self.LOCAL_CACHE_DIR, snapshot_name, "model_weights.pth"), map_location=device)
 
         model.load_state_dict(state_dict, strict=not metadata['lightweight'])
+
+        # Move the model to the requested device.
+        # We need to do this before initializing the optimizer so that the
+        # optimizer's tensors end up on the correct device.
+        model.to(device)
 
         # Load the optimizer's state dict
         optimizer_state_dict = None
@@ -86,7 +91,7 @@ class VQASnapshotManager:
                 'lightweight': lightweight,
                 'model_version': model.MODEL_NAME,
                 'epoch': epoch,
-                'loss': loss.item()
+                'loss': loss
             }
 
             with open(os.path.join(self.LOCAL_CACHE_DIR, snapshot_name, "metadata.json"), 'w') as f:

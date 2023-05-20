@@ -30,7 +30,7 @@ def train_model(args):
 
     if args.from_snapshot:
         try:
-            snapshot = snapshot_manager.load_snapshot(args.from_snapshot, dataset_type)
+            snapshot = snapshot_manager.load_snapshot(args.from_snapshot, dataset_type, device)
         except Exception as e:
             print(f"Failed to load snapshot: {e}")
             return
@@ -141,9 +141,9 @@ def train_model(args):
         # Save the model and dataset state
         if isModelParallel:
             # When saving a parallel model, the original model is wrapped and stored in model.module.
-            snapshot_manager.save_snapshot(snapshot_name, model.module, optimizer, dataset, epoch, loss, lightweight=args.lightweight_snapshots, skipS3Storage=args.skip_s3_storage)
+            snapshot_manager.save_snapshot(snapshot_name, model.module, optimizer, dataset, epoch, epoch_loss, lightweight=args.lightweight_snapshots, skipS3Storage=args.skip_s3_storage)
         else:
-            snapshot_manager.save_snapshot(snapshot_name, model, optimizer, dataset, epoch, loss, lightweight=args.lightweight_snapshots, skipS3Storage=args.skip_s3_storage)
+            snapshot_manager.save_snapshot(snapshot_name, model, optimizer, dataset, epoch, epoch_loss, lightweight=args.lightweight_snapshots, skipS3Storage=args.skip_s3_storage)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Train a VQA model')
