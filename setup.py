@@ -11,6 +11,7 @@ setup(
         'pillow',
         'matplotlib',
         'numpy',
-        'tqdm'
+        'tqdm',
+        'scikit-learn'
     ],
 )

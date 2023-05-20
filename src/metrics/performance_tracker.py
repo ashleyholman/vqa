@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from typing import List
 import torch
 from torch.nn.functional import cross_entropy
+from sklearn.metrics import precision_score, recall_score, f1_score
 
 @dataclass
 class PerformanceMetrics:
@@ -11,12 +12,25 @@ class PerformanceMetrics:
     accuracy: float
     top_5_accuracy: float
     loss: float
+    micro_avg_precision: float
+    macro_avg_precision: float
+    micro_avg_recall: float
+    macro_avg_recall: float
+    micro_avg_f1: float
+    macro_avg_f1: float
 
     def print_report(self):
         print("== Performance Metrics ==")
         print(f"Accuracy: {self.accuracy:.4f}")
         print(f"Top 5 Accuracy: {self.top_5_accuracy:.4f}")
         print(f"Loss: {self.loss:.4f}")
+        print(f"Micro Avg Precision: {self.micro_avg_precision:.4f}")
+        print(f"Macro Avg Precision: {self.macro_avg_precision:.4f}")
+        print(f"Micro Avg Recall: {self.micro_avg_recall:.4f}")
+        print(f"Macro Avg Recall: {self.macro_avg_recall:.4f}")
+        print(f"Micro Avg F1: {self.micro_avg_f1:.4f}")
+        print(f"Macro Avg F1: {self.macro_avg_f1:.4f}")
+
 
 class Metric(ABC):
     @abstractmethod
@@ -86,6 +100,57 @@ class TopKAccuracyMetric(Metric):
         correct = top_k_preds.eq(labels_repeated).sum()
         return correct.item()
 
+class PrecisionMetric(Metric):
+    def __init__(self, average):
+        self.average = average
+        self.reset()
+
+    def reset(self):
+        self.predictions = []
+        self.correct_answers = []
+
+    def update(self, logits, labels):
+        _, preds = torch.max(logits, dim=1)
+        self.predictions.extend(preds.tolist())
+        self.correct_answers.extend(labels.tolist())
+
+    def value(self):
+        return precision_score(self.correct_answers, self.predictions, average=self.average, zero_division=1) * 100
+
+class RecallMetric(Metric):
+    def __init__(self, average):
+        self.average = average
+        self.reset()
+
+    def reset(self):
+        self.predictions = []
+        self.correct_answers = []
+
+    def update(self, logits, labels):
+        _, preds = torch.max(logits, dim=1)
+        self.predictions.extend(preds.tolist())
+        self.correct_answers.extend(labels.tolist())
+
+    def value(self):
+        return recall_score(self.correct_answers, self.predictions, average=self.average, zero_division=1) * 100
+
+class F1Metric(Metric):
+    def __init__(self, average):
+        self.average = average
+        self.reset()
+
+    def reset(self):
+        self.predictions = []
+        self.correct_answers = []
+
+    def update(self, logits, labels):
+        _, preds = torch.max(logits, dim=1)
+        self.predictions.extend(preds.tolist())
+        self.correct_answers.extend(labels.tolist())
+
+    def value(self):
+        return f1_score(self.correct_answers, self.predictions, average=self.average, zero_division=1) * 100
+
 class PerformanceTracker:
     def __init__(self, source, dataset_type):
         self.source = source
@@ -94,6 +159,12 @@ class PerformanceTracker:
             "accuracy": AccuracyMetric(),
             "top_5_accuracy": TopKAccuracyMetric(5),
             "loss": LossMetric(),
+            "micro_avg_precision": PrecisionMetric('micro'),
+            "macro_avg_precision": PrecisionMetric('macro'),
+            "micro_avg_recall": RecallMetric('micro'),
+            "macro_avg_recall": RecallMetric('macro'),
+            "micro_avg_f1": F1Metric('micro'),
+            "macro_avg_f1": F1Metric('macro'),
         }
         self.reset()
 
