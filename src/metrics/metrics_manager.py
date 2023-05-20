@@ -53,12 +53,8 @@ class MetricsManager:
             }
         )
 
-    def get_performance_metrics(self, model_name, dataset_type):
-        pk = f"test_result:{model_name}:{dataset_type}"
-        return self._get_metrics(pk)
-
-    def get_training_metrics(self, model_name, dataset_type):
-        pk = f"training_loss:{model_name}:{dataset_type}"
+    def get_metrics(self, source, model_name, dataset_type):
+        pk = f"{source}:{model_name}:{dataset_type}"
         return self._get_metrics(pk)
 
     def _get_metrics(self, pk):
