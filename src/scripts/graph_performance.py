@@ -44,9 +44,10 @@ def plot_graph(data):
     ax1.legend()
     ax1.xaxis.set_major_locator(MaxNLocator(integer=True))
 
-    # plot the top_5_accuracy metrics
-    ax2.plot(epochs, [data[epoch].get('training_top_5_acc') for epoch in epochs], linestyle='-', marker='o', color='yellow', label='training top 5 accuracy')
-    ax2.plot(epochs, [data[epoch].get('validation_top_5_acc') for epoch in epochs], linestyle='-', marker='o', color='cyan', label='validation top 5 accuracy')
+    # plot the top_5_accuracy metrics (fallback to "top_5_acc" for backward compatibility)
+    ax2.plot(epochs, [data[epoch].get('training_top_5_accuracy', data[epoch].get('training_top_5_acc')) for epoch in epochs], linestyle='-', marker='o', color='yellow', label='training top 5 accuracy')
+    ax2.plot(epochs, [data[epoch].get('validation_top_5_accuracy', data[epoch].get('validation_top_5_acc')) for epoch in epochs], linestyle='-', marker='o', color='cyan', label='validation top 5 accuracy')
+
 
     ax2.set_xlabel('Epochs')
     ax2.set_ylabel('Top 5 Accuracy')
