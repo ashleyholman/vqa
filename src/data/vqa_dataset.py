@@ -76,6 +76,9 @@ class VQADataset(Dataset):
         VQADataset.apply_answer_classes(annotations, self.answer_classes)
         #print(f"Answer classes: {self.answer_classes}")
 
+        # Build a count of the number of answers per class.  This can be used to analyse class imbalance.
+        self.class_counts = self._count_classes(annotations, len(self.answer_classes))
+
         # Our dataset will have one sample per question, each question will have one image and one answer class.
         # So, iterate over the questions to preprocess the dataset one sample at a time
         print("Tokenizing question text...")
@@ -126,6 +129,13 @@ class VQADataset(Dataset):
             else:
                 annotation['answer_class_id'] = answer_classes.index(answer)
                 #print(f"Answer \"{answer}\" is in the top 999.. assigning with index {top_answers.index(answer)}")
+
+    def _count_classes(self, annotations, num_classes):
+        class_counts = np.zeros(num_classes, dtype=int)
+        for annotation in annotations:
+            class_counts[annotation['answer_class_id']] += 1
+        return class_counts
+
 
     @lru_cache(maxsize=1000)
     def preprocess_image(self, image_id):

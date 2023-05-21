@@ -9,7 +9,6 @@ from datetime import datetime
 from tqdm import tqdm
 from src.data.vqa_dataset import VQADataset
 from src.models.vqa_model import VQAModel
-from torch.nn.functional import cross_entropy
 
 from src.snapshots.vqa_snapshot_manager import VQASnapshotManager
 from src.snapshots.snapshot import Snapshot
@@ -112,6 +111,20 @@ def train_model(args):
     print(f"Using batch size: {batch_size}")
     data_loader = DataLoader(dataset, batch_size=16, num_workers=num_workers, shuffle=True)
 
+    ### Use class weighting to counteract class imbalance
+    class_counts = torch.Tensor(dataset.class_counts)
+    # if any classes have 0 count, set them to 1 to avoid dividing by 0
+    class_counts[class_counts == 0] = 1
+    # take the reciprocal of the class counts so that the most frequent class has the lowest weight
+    class_weights = 1. / class_counts
+    # normalize weights so they sum to 1
+    class_weights = class_weights / class_weights.sum() 
+    class_weights = class_weights.to(device)
+    loss_function = torch.nn.CrossEntropyLoss(weight=class_weights)
+
+    print("Class frequencies: ", class_counts)
+    print("Class weights: ", class_weights)
+
     print("Beginning training.")
     if (args.skip_s3_storage):
         print("WARNING: Skipping S3 storage of snapshots.  Snapshots will only be stored locally.")
@@ -136,7 +149,7 @@ def train_model(args):
 
             # Forward pass
             logits = model(images, input_ids, attention_mask)
-            loss = cross_entropy(logits, labels)
+            loss = loss_function(logits, labels)
 
             # Backward pass and optimize
             loss.backward()
