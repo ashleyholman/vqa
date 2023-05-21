@@ -1,0 +1,75 @@
+== 20th May, 11:50am ==
+- Trained the model to 1 epoch and snapshotted.
+- Resumed training for another 4 epochs.
+- Noticed that the loss was increasing at each epoch:
+epoch 1: 3.2247357749
+epoch 2: 3.3537965479
+epoch 3: 3.516193326
+epoch 4: 3.6436337303
+epoch 5: 3.7643052345
+
+- The first epoch of training is definitely reducing loss, since the
+  untrained model has ~0.02% accuracy on the validation set, but after 1 epochs
+  training has 31% accuracy.
+
+- Discussed with ChatGPT and we have two main ideas of what could be going wrong:
+  1) Training from the 2nd epoch onwards was resumed from snapshot.  Possibly
+  there could be a bug in restoring the optimizer state which is causing the
+  loss to go up.
+  2) The learning rate could be too high, causing training to overshoot.
+
+- I am going to try the following:
+ 1) Train on 5 epochs without restoring from snapshot in the middle, to test the
+    snapshot/restore bug hypothesis.
+ 2) If the above didn't fix the bug, try reducing learning rate from Adam's
+    default (1e-3) to 1e-4.
+
+Results:
+
+1) Snapshot/restore functionality appears to work fine.  The same issue of
+increasing loss occured when not using snapshotting.
+
+Here's the results from the v1 model with 1e-3 learning rate:
+
+epoch,training_loss,training_top_5_acc,training_accuracy,validation_f1_score_macro,validation_loss,validation_precision_macro,validation_top_5_accuracy,validation_recall_macro,validation_recall_micro,validation_accuracy,validation_precision_micro,validation_f1_score_micro,validation_top_5_acc
+1,3.2315075886,68.928039445,31.3928569014,5.6813152488,3.0792971602,65.4738157559,73.724306521,6.445209268,35.1106114185,35.1106114185,35.1106114185,35.1106114185,
+2,3.361339971,72.0446100005,32.8882699315,6.7326739821,3.4026299975,60.6931810296,73.1775474216,8.2992956059,33.0957201638,33.0957201638,33.0957201638,33.0957201638,
+3,3.5159329014,73.0584531624,33.326347528,6.7345578681,3.7180197095,60.9107401213,73.6659917706,8.4431275852,33.6368810472,33.6368810472,33.6368810472,33.6368810472,
+4,3.6597617971,73.6421059273,33.6738350043,7.5395065363,4.0672946342,57.4465725714,73.6212060423,8.6312476955,32.9497000289,32.9497000289,32.9497000289,32.9497000289,
+5,3.7727548355,74.2246319495,34.0794624085,8.5137171176,4.08006612,52.5039431919,74.2570700803,9.9172454909,32.1006372636,32.1006372636,32.1006372636,32.1006372636,
+6,3.8662004141,74.6751037167,34.2396852331,,4.2276296166,,,,,34.079606632,,,74.0816593112
+7,3.9534126623,75.0180842218,34.4564705458,,4.2171596133,,,,,34.8535599989,,,75.0963359676
+8,4.0262200343,75.3721068062,34.7911131543,,4.2361361302,,,,,36.1234220029,,,75.5106039542
+9,4.0981813117,75.6558206406,35.0000112674,,4.7706815169,,,,,31.7400188473,,,72.5360851675
+10,4.1495278687,75.9528300399,35.247443984,,4.7529160895,,,,,35.6335780998,,,76.0587626076
+
+(missing metrics are because I added some new metrics after the code ran)
+
+== Sun 21st May, 3pm ==
+Reducing the learning rate saw the training and validation loss both steadily
+trend down, so it looks like the 1e-3 learning rate was overshooting.
+
+However, the new model (lr1e4) appears to be overfitting.  Results:
+
+epoch,training_loss,training_f1_score_macro,training_precision_macro,training_top_5_accuracy,training_recall_macro,training_recall_micro,training_accuracy,training_precision_micro,training_f1_score_micro,validation_f1_score_macro,validation_loss,validation_precision_macro,validation_top_5_accuracy,validation_recall_macro,validation_recall_micro,validation_accuracy,validation_precision_micro,validation_f1_score_micro
+1,2.5852090719,3.1206656457,68.8510755771,72.6861773448,2.7691301792,35.9672072779,35.9672072779,35.9672072779,35.9672072779,4.2924570786,2.1305200113,84.7486000743,78.8499398192,3.9149815897,40.9136288569,40.9136288569,40.9136288569,40.9136288569
+2,2.073595188,8.4091373642,52.4334464158,79.9469078798,7.2375279044,40.8173842891,40.8173842891,40.8173842891,40.8173842891,9.2007364429,1.9639582348,72.5276034842,81.4405142894,8.0618229005,42.4512721946,42.4512721946,42.4512721946,42.4512721946
+3,1.9220939211,13.60625916,49.7204741552,82.2749838312,11.3629908193,42.4394432088,42.4394432088,42.4394432088,42.4394432088,13.366798583,1.8953340608,56.506632693,82.3730837773,13.3805090139,43.0292880002,43.0292880002,43.0292880002,43.0292880002
+4,1.8292348324,17.546353651,46.946821161,83.7974386883,14.5386174168,43.5772280775,43.5772280775,43.5772280775,43.5772280775,14.3463529594,1.8590599547,57.6302872128,82.967894231,13.4968189554,43.8447614693,43.8447614693,43.8447614693,43.8447614693
+5,1.7616312745,21.3304292009,48.3829055154,84.8969143022,17.5368357974,44.4279188835,44.4279188835,44.4279188835,44.4279188835,13.8818796399,1.85231735,62.010898997,82.9524991369,12.219221176,44.3891879788,44.3891879788,44.3891879788,44.3891879788
+6,1.7089118018,24.7722335595,49.0317632947,85.7753229808,20.2805201161,45.1224431389,45.1224431389,45.1224431389,45.1224431389,15.0596080459,1.8407398825,54.3733380235,83.2235460966,13.6280095327,44.3588643086,44.3588643086,44.3588643086,44.3588643086
+
+Discussed with ChatGPT.  Since we have a lot of class imbalance, I want to try
+adding weightings to the classes first.  We can also try regularization through
+dropout, but I will try that later.  First I want to address the class imbalance
+as it's quite severe:
+
+[40728 40082 27889  6093  5745  4311  3073  2733  2512  2483  2346  1986
+  1931  1927  1351  1117  1100   839   786   775   768   760   756   752
+   691   684   641   637   615   532   526   476   466   462   454   451
+ ...
+     8     8     8     7     7     7     7     7     7     7     7     6
+     6     6     6     6     6     5     5     4     4     4     4     3
+     3     2     2     1]
+
+I'm going to test changing my loss function to use class weights.
