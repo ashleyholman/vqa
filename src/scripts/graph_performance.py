@@ -1,7 +1,12 @@
+import os
 import argparse
 import matplotlib.pyplot as plt
 from matplotlib.ticker import MaxNLocator
 from src.metrics.metrics_manager import MetricsManager
+
+import webbrowser
+from urllib.parse import urljoin
+from urllib.request import pathname2url
 
 def fetch_metrics(model_name):
     metrics_manager = MetricsManager('graph-performance')
@@ -25,52 +30,78 @@ def fetch_metrics(model_name):
 
     return data
 
-def plot_graph(data):
+def plot_graphs(data, model_name):
     plt.style.use('dark_background')
-
     epochs = sorted(data.keys())
+    metrics = set([k.split('_', 1)[1] for k in data[epochs[0]].keys() if '_' in k])
+    output_dir = f"{model_name}_graphs"
 
-    # initialize subplots in a 2x2 grid
-    fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=(10, 7))
+    # Create output directory if it doesn't exist
+    os.makedirs(output_dir, exist_ok=True)
 
+    image_files = []
+    metric_pairs = [('accuracy', 'top_5_accuracy'), 
+                    ('precision_macro', 'precision_micro'), 
+                    ('recall_macro', 'recall_micro'), 
+                    ('f1_score_macro', 'f1_score_micro')]
 
-    # plot the accuracy metrics
-    ax1.plot(epochs, [data[epoch].get('training_accuracy') for epoch in epochs], linestyle='-', marker='o', color='yellow', label='training accuracy')
-    ax1.plot(epochs, [data[epoch].get('validation_accuracy') for epoch in epochs], linestyle='-', marker='o', color='cyan', label='validation accuracy')
+    # Plot 'loss' first as a larger graph
+    if 'loss' in metrics:
+        plt.figure(figsize=(10, 5))
+        ax = plt.gca()
+        ax.plot(epochs, [data[epoch].get(f'training_loss') for epoch in epochs], linestyle='-', marker='o', color='yellow', label='training')
+        ax.plot(epochs, [data[epoch].get(f'validation_loss') for epoch in epochs], linestyle='-', marker='o', color='cyan', label='validation')
+        ax.set_xlabel('Epochs')
+        ax.set_ylabel('loss')
+        ax.set_title('Loss vs Epochs')
+        ax.legend()
+        ax.xaxis.set_major_locator(MaxNLocator(integer=True))
+        plt.tight_layout()
+        image_file = f"loss.png"
+        plt.savefig(os.path.join(output_dir, image_file))
+        image_files.append(("loss", image_file))
+        plt.close()
 
-    ax1.set_xlabel('Epochs')
-    ax1.set_ylabel('Accuracy')
-    ax1.set_title('Accuracy vs Epochs')
-    ax1.legend()
-    ax1.xaxis.set_major_locator(MaxNLocator(integer=True))
+    # Plot the rest of the metrics
+    for metric in metrics:
+        if metric != 'loss':
+            plt.figure(figsize=(5, 3))
+            ax = plt.gca()
+            ax.plot(epochs, [data[epoch].get(f'training_{metric}') for epoch in epochs], linestyle='-', marker='o', color='yellow', label='training')
+            ax.plot(epochs, [data[epoch].get(f'validation_{metric}') for epoch in epochs], linestyle='-', marker='o', color='cyan', label='validation')
+            ax.set_xlabel('Epochs')
+            ax.set_ylabel(metric)
+            ax.set_title(f'{metric.capitalize()} vs Epochs')
+            ax.legend()
+            ax.xaxis.set_major_locator(MaxNLocator(integer=True))
+            plt.tight_layout()
+            image_file = f"{metric}.png"
+            plt.savefig(os.path.join(output_dir, image_file))
+            image_files.append((metric, image_file))
+            plt.close()
 
-    # plot the top_5_accuracy metrics (fallback to "top_5_acc" for backward compatibility)
-    ax2.plot(epochs, [data[epoch].get('training_top_5_accuracy', data[epoch].get('training_top_5_acc')) for epoch in epochs], linestyle='-', marker='o', color='yellow', label='training top 5 accuracy')
-    ax2.plot(epochs, [data[epoch].get('validation_top_5_accuracy', data[epoch].get('validation_top_5_acc')) for epoch in epochs], linestyle='-', marker='o', color='cyan', label='validation top 5 accuracy')
+    with open(os.path.join(output_dir, "index.html"), "w") as f:
+        f.write('<html>\n<head>\n<style>\nbody {background-color: #303030; display: flex; flex-wrap: wrap; justify-content: center;}\nimg {margin: 10px; max-width: 100%; height: auto;}\n.container {display: flex;}\n.container img {flex: 1;}\n</style>\n</head>\n<body>\n')
 
+        # Add 'loss' graph at the top of the page, in a bigger size.
+        loss_image = next((file for metric, file in image_files if metric == "loss"), None)
+        if loss_image:
+            f.write(f'<img src="{loss_image}" style="width:100%;" />\n')
 
-    ax2.set_xlabel('Epochs')
-    ax2.set_ylabel('Top 5 Accuracy')
-    ax2.set_title('Top 5 Accuracy vs Epochs')
-    ax2.legend()
-    ax2.xaxis.set_major_locator(MaxNLocator(integer=True))
+        # The rest of the metrics will be shown in a 2 column layout, pairing those which are related.
+        for pair in metric_pairs:
+            pair_images = [(metric, file) for metric, file in image_files if metric in pair]
+            pair_images.sort(key=lambda x: pair.index(x[0]))  # sort the pair_images according to the order in pair
+            if pair_images:
+                f.write('<div class="container">\n')
+                for _, image_file in pair_images:  # unpack the tuple to get the image_file
+                    f.write(f'<img src="{image_file}" />\n')
+                f.write('</div>\n')
 
-    # plot the loss metrics
-    ax3.plot(epochs, [data[epoch].get('training_loss') for epoch in epochs], linestyle='-', marker='o', color='yellow', label='training loss')
-    ax3.plot(epochs, [data[epoch].get('validation_loss') for epoch in epochs], linestyle='-', marker='o', color='cyan', label='validation loss')
+        f.write('</body>\n</html>\n')
 
-    ax3.set_xlabel('Epochs')
-    ax3.set_ylabel('Loss')
-    ax3.set_title('Loss vs Epochs')
-    ax3.legend()
-    ax3.xaxis.set_major_locator(MaxNLocator(integer=True))
-
-    # hide the unused subplot
-    ax4.axis('off')
-
-    # adjust subplot layout and show plot
-    plt.tight_layout()
-    plt.show()
+    # Open the HTML file in default browser
+    webbrowser.open('file://' + os.path.realpath(os.path.join(output_dir, "index.html")))
 
 def print_csv(data):
     header = ['epoch', 'training_loss']
@@ -97,8 +128,8 @@ def main():
     if args.csv:
         print_csv(data)
     else:
-        plot_graph(data)
-
+        plot_graphs(data, args.model_name)
 
 if __name__ == '__main__':
     main()
+
