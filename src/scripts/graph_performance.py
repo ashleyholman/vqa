@@ -51,9 +51,9 @@ def plot_graphs(data, model_name):
         ax = plt.gca()
         ax.plot(epochs, [data[epoch].get(f'training_loss') for epoch in epochs], linestyle='-', marker='o', color='yellow', label='training')
         ax.plot(epochs, [data[epoch].get(f'validation_loss') for epoch in epochs], linestyle='-', marker='o', color='cyan', label='validation')
-        ax.set_xlabel('Epochs')
+        ax.set_xlabel('epochs')
         ax.set_ylabel('loss')
-        ax.set_title('Loss vs Epochs')
+        ax.set_title('loss')
         ax.legend()
         ax.xaxis.set_major_locator(MaxNLocator(integer=True))
         plt.tight_layout()
@@ -71,7 +71,7 @@ def plot_graphs(data, model_name):
             ax.plot(epochs, [data[epoch].get(f'validation_{metric}') for epoch in epochs], linestyle='-', marker='o', color='cyan', label='validation')
             ax.set_xlabel('Epochs')
             ax.set_ylabel(metric)
-            ax.set_title(f'{metric.capitalize()} vs Epochs')
+            ax.set_title(metric)
             ax.legend()
             ax.xaxis.set_major_locator(MaxNLocator(integer=True))
             plt.tight_layout()
@@ -86,7 +86,7 @@ def plot_graphs(data, model_name):
         # Add 'loss' graph at the top of the page, in a bigger size.
         loss_image = next((file for metric, file in image_files if metric == "loss"), None)
         if loss_image:
-            f.write(f'<img src="{loss_image}" style="width:100%;" />\n')
+            f.write(f'<img src="{loss_image}" style="margin-left:auto; margin-right:auto;" />\n')
 
         # The rest of the metrics will be shown in a 2 column layout, pairing those which are related.
         for pair in metric_pairs:
