@@ -42,6 +42,8 @@ def main(args):
     metrics_manager = MetricsManager(METRICS_SOURCE)
     performance_tracker = PerformanceTracker()
 
+    model_name = None;
+
     if args.from_snapshot:
         snapshot = snapshot_manager.load_snapshot(args.from_snapshot, dataset_type, device)
         if snapshot is None:
@@ -49,11 +51,13 @@ def main(args):
             return
         model = snapshot.get_model()
         dataset = snapshot.get_dataset()
+        model_name = snapshot.get_metadata().get("model_version")
         print(f"Using snapshot: {args.from_snapshot}")
     else:
         # instantiate dataset and model from scratch
         dataset = VQADataset(dataset_type)
         model = VQAModel(len(dataset.answer_classes))
+        model_name = model.MODEL_NAME
 
         print("Using untrained model")
 
@@ -95,7 +99,7 @@ def main(args):
         epoch = 0
 
     # Store the metrics to DynamoDB for later reporting
-    metrics_manager.store_performance_metrics(model.MODEL_NAME, dataset_type, epoch, performance_tracker.get_metrics())
+    metrics_manager.store_performance_metrics(model_name, dataset_type, epoch, performance_tracker.get_metrics())
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
