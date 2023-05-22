@@ -34,7 +34,7 @@ def plot_graphs(data, model_name):
     plt.style.use('dark_background')
     epochs = sorted(data.keys())
     metrics = set([k.split('_', 1)[1] for k in data[epochs[0]].keys() if '_' in k])
-    output_dir = f"{model_name}_graphs"
+    output_dir = f"graphs/{model_name}"
 
     # Create output directory if it doesn't exist
     os.makedirs(output_dir, exist_ok=True)
