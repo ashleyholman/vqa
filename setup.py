@@ -12,6 +12,7 @@ setup(
         'matplotlib',
         'numpy',
         'tqdm',
-        'scikit-learn'
+        'scikit-learn',
+        'colorama'
     ],
 )

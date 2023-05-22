@@ -98,6 +98,47 @@ class VQASnapshotManager:
         except Exception as e:
             print(f'Failed to save snapshot: {e}')
 
+    def list_snapshots(self):
+        try:
+            response = self.s3_client.list_objects_v2(
+                Bucket=self.S3_BUCKET,
+                Prefix='snapshots/'
+            )
+
+            snapshot_names = set()
+            for obj in response.get('Contents', []):
+                prefix, snapshot_name, _ = obj['Key'].split('/', 2)
+                if prefix == 'snapshots':
+                    snapshot_names.add(snapshot_name)
+
+            return list(snapshot_names)
+        except Exception as e:
+            print(f"Failed to list snapshots: {e}")
+            return []
+
+    def delete_snapshot(self, snapshot_name):
+        # Safety check to ensure snapshot_name is not empty
+        if not snapshot_name:
+            raise ValueError("Snapshot name is required")
+
+        local_snapshot_dir = os.path.join(self.LOCAL_CACHE_DIR, snapshot_name)
+
+        # Remove from local cache
+        if os.path.exists(local_snapshot_dir):
+            shutil.rmtree(local_snapshot_dir)
+
+        # Remove from S3
+        s3_bucket = self.S3_BUCKET
+        s3_prefix = f"snapshots/{snapshot_name}/"
+
+        s3_resource = boto3.resource('s3')
+
+        s3_bucket_resource = s3_resource.Bucket(s3_bucket)
+
+        # Iterate over all objects with the given prefix and delete
+        for obj in s3_bucket_resource.objects.filter(Prefix=s3_prefix):
+            s3_resource.Object(s3_bucket_resource.name, obj.key).delete()
+
     def _populate_cache(self, snapshot_name):
         local_snapshot_path = os.path.join(self.LOCAL_CACHE_DIR, snapshot_name)
         if not (os.path.exists(os.path.join(local_snapshot_path, "model_weights.pth")) and 
