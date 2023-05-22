@@ -3,13 +3,16 @@ import json
 import torch
 import boto3
 import shutil
-from botocore.exceptions import NoCredentialsError
 
+from botocore.exceptions import NoCredentialsError
+from datetime import datetime
+from decimal import Decimal
 from torch.optim import Adam
 
 from src.data.vqa_dataset import VQADataset
 from src.models.vqa_model import VQAModel
 from src.snapshots.snapshot import Snapshot
+from src.util.dynamodb_helper import DynamoDBHelper
 
 class SnapshotNotFoundException(Exception):
     pass
@@ -23,6 +26,7 @@ class VQASnapshotManager:
 
     def __init__(self):
         self.s3_client = boto3.client('s3')
+        self.ddb_helper = DynamoDBHelper()
 
         # ensure caching dir exists
         os.makedirs(self.LOCAL_CACHE_DIR, exist_ok=True)
@@ -65,38 +69,55 @@ class VQASnapshotManager:
         return Snapshot(model, dataset, optimizer, metadata)
 
     def save_snapshot(self, snapshot_name, model, optimizer, dataset, epoch, loss, lightweight=False, skipS3Storage=False):
-        try:
-            # ensure snapshot dir exists
-            os.makedirs(os.path.join(self.LOCAL_CACHE_DIR, snapshot_name), exist_ok=True)
+        # ensure snapshot dir exists
+        os.makedirs(os.path.join(self.LOCAL_CACHE_DIR, snapshot_name), exist_ok=True)
 
-            state_dict = model.state_dict()
+        state_dict = model.state_dict()
 
-            if lightweight:
-                keys_to_remove = [key for key in state_dict if not key.startswith(('vit_transform', 'bert_transform', 'head'))]
-                for key in keys_to_remove:
-                    state_dict.pop(key)
+        if lightweight:
+            keys_to_remove = [key for key in state_dict if not key.startswith(('vit_transform', 'bert_transform', 'head'))]
+            for key in keys_to_remove:
+                state_dict.pop(key)
 
-            torch.save(state_dict, os.path.join(self.LOCAL_CACHE_DIR, snapshot_name, "model_weights.pth"))
+        torch.save(state_dict, os.path.join(self.LOCAL_CACHE_DIR, snapshot_name, "model_weights.pth"))
 
-            # Save optimizer state
-            torch.save(optimizer.state_dict(), os.path.join(self.LOCAL_CACHE_DIR, snapshot_name, "optimizer_state.pth"))
+        # Save optimizer state
+        torch.save(optimizer.state_dict(), os.path.join(self.LOCAL_CACHE_DIR, snapshot_name, "optimizer_state.pth"))
 
-            metadata = {
-                'settype': dataset.settype,
-                'answer_classes': dataset.answer_classes,
-                'lightweight': lightweight,
-                'model_version': model.MODEL_NAME,
-                'epoch': epoch,
-                'loss': loss
-            }
+        metadata = {
+            'settype': dataset.settype,
+            'answer_classes': dataset.answer_classes,
+            'lightweight': lightweight,
+            'model_version': model.MODEL_NAME,
+            'epoch': epoch,
+            'loss': loss,
+            'timestamp': datetime.now().strftime("%Y%m%d_%H%M%S"),
+        }
 
-            with open(os.path.join(self.LOCAL_CACHE_DIR, snapshot_name, "metadata.json"), 'w') as f:
-                json.dump(metadata, f)
+        with open(os.path.join(self.LOCAL_CACHE_DIR, snapshot_name, "metadata.json"), 'w') as f:
+            json.dump(metadata, f)
 
-            if not skipS3Storage:
-                self._save_to_s3(snapshot_name)
-        except Exception as e:
-            print(f'Failed to save snapshot: {e}')
+        if skipS3Storage:
+            # Skip storing in S3, and also skip storing the associated DDB record
+            return
+
+        # Save to S3
+        self._save_to_s3(snapshot_name)
+
+        # Before saving to DDB, convert any float values in the metadata to Decimal
+        for key, value in metadata.items():
+            if isinstance(value, float):
+                metadata[key] = Decimal(str(value))
+
+        # Remove answer class and add snapshot name
+        metadata.pop('answer_classes')
+        metadata['snapshot_name'] = snapshot_name
+
+        # Insert DDB record
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        pk = f"snapshot:{model.MODEL_NAME}:{dataset.settype}"
+        sk = f"{epoch}:{timestamp}"  # Using epoch number
+        self.ddb_helper.put_item(pk, sk, metadata)
 
     def list_snapshots(self):
         try:

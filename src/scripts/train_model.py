@@ -122,9 +122,6 @@ def train_model(args):
     class_weights = class_weights.to(device)
     loss_function = torch.nn.CrossEntropyLoss(weight=class_weights)
 
-    print("Class frequencies: ", class_counts)
-    print("Class weights: ", class_weights)
-
     print("Beginning training.")
     if (args.skip_s3_storage):
         print("WARNING: Skipping S3 storage of snapshots.  Snapshots will only be stored locally.")
