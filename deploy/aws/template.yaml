@@ -158,6 +158,8 @@ Resources:
           Fn::If:
             - UseGPUSpotInstancesCondition
             - MarketType: spot
+              SpotOptions:
+                MaxPrice: "1.50"
             - !Ref 'AWS::NoValue'
         BlockDeviceMappings:
           - DeviceName: /dev/xvda
