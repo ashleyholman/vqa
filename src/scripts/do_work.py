@@ -63,13 +63,18 @@ def validate_snapshot(snapshot_name, num_dataloader_workers, dataset_type):
     os.system(cmd)
 
 def train_model(snapshot_name, target_epoch, num_dataloader_workers, dataset_type):
-    # Form the command to execute
-    cmd = f"python ./src/scripts/train_model.py --from-snapshot {snapshot_name} --num-dataloader-workers {num_dataloader_workers} --num-epochs {target_epoch} --no-progress-bar"
+    # Form the base command to execute
+    cmd = f"python ./src/scripts/train_model.py --num-dataloader-workers {num_dataloader_workers} --num-epochs {target_epoch} --no-progress-bar"
+
+    # If snapshot_name is not None, add --from-snapshot to command
+    if snapshot_name is not None:
+        cmd += f" --from-snapshot {snapshot_name}"
+
     if dataset_type == 'mini':
         cmd += " --dataset-type mini --lightweight-snapshots"
+
     print(f"Executing command: {cmd}")
     os.system(cmd)
-
 
 def main():
     parser = argparse.ArgumentParser(description='Enter a continuous loop of training and validation of our current model version')
