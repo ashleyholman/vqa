@@ -12,4 +12,8 @@ pip install 'urllib3<2.0'
 echo
 echo "==> Download data sets"
 python src/scripts/fetch_datasets.py
-python src/scripts/do_work.py >> train.log
+echo "==> Make mini dataset"
+./src/scripts/make_mini_dataset.sh
+echo "==> Enter work loop"
+nohup python src/scripts/do_work.py >> train.log &
+

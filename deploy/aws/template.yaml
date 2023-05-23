@@ -8,7 +8,6 @@ Parameters:
       git clone https://github.com/ashleyholman/vqa.git
       cd vqa
       ./provision.sh
-      ./src/scripts/make_mini_dataset.sh
       EOF
   UseCPUSpotInstances:
     Type: String
