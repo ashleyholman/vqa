@@ -119,7 +119,7 @@ class VQASnapshotManager:
         sk = f"{epoch}:{timestamp}"  # Using epoch number
         self.ddb_helper.put_item(pk, sk, metadata)
 
-    def list_snapshots(self):
+    def list_snapshots_in_s3(self):
         try:
             response = self.s3_client.list_objects_v2(
                 Bucket=self.S3_BUCKET,
@@ -159,6 +159,20 @@ class VQASnapshotManager:
         # Iterate over all objects with the given prefix and delete
         for obj in s3_bucket_resource.objects.filter(Prefix=s3_prefix):
             s3_resource.Object(s3_bucket_resource.name, obj.key).delete()
+
+    # Returns a list of all snapshots for a given model name and dataset type,
+    # based on the records in DynamoDB.
+    def list_snapshots(self, model_name, dataset_type):
+        pk = f"snapshot:{model_name}:{dataset_type}"
+        snapshots = self.ddb_helper.query(pk)
+
+        snapshot_dict = {}
+        for snapshot in snapshots:
+            snapshot_name = snapshot['snapshot_name']
+            snapshot_data = {key: value for key, value in snapshot.items() if key not in ['PK', 'SK']}
+            snapshot_dict[snapshot_name] = snapshot_data
+
+        return snapshot_dict
 
     def _populate_cache(self, snapshot_name):
         local_snapshot_path = os.path.join(self.LOCAL_CACHE_DIR, snapshot_name)

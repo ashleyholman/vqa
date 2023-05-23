@@ -15,7 +15,7 @@ def backfill_ddb(dry_run=False):
     s3_client = boto3.client('s3')
 
     # get the list of snapshots from S3
-    snapshots = snapshot_manager.list_snapshots()
+    snapshots = snapshot_manager.list_snapshots_in_s3()
 
     for snapshot_name in snapshots:
         print(f"Fetching metadata for snapshot: {snapshot_name}")

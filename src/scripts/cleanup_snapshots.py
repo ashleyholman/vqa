@@ -14,7 +14,7 @@ def main():
 
     snapshot_manager = VQASnapshotManager()
 
-    snapshots = snapshot_manager.list_snapshots()
+    snapshots = snapshot_manager.list_snapshots_in_s3()
 
     # Group snapshots based on non-timestamp part of the name
     snapshot_groups = defaultdict(list)
