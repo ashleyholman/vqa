@@ -66,12 +66,17 @@ def main(args):
     # Create a DataLoader to handle batching of the dataset
     data_loader = DataLoader(dataset, batch_size=16, num_workers=num_workers, shuffle=False)
 
+    # Wrap data_loader with tqdm to show a progress bar, unless --no-progress-bar was specified
+    if not args.no_progress_bar:
+        data_loader = tqdm(data_loader)
+
     # Move model to evaluation mode
     model.eval()
 
     # No need to track gradients for this
+    print("Evaluating model...")
     with torch.no_grad():
-        for batch in tqdm(data_loader):
+        for batch in data_loader:
             # Transfer data to the appropriate device
             images = batch["image"].to(device)
             input_ids = batch["input_ids"].to(device)
@@ -106,5 +111,7 @@ if __name__ == "__main__":
     parser.add_argument('--from-snapshot', type=str, help="Snapshot name to load the model and dataset from.")
     parser.add_argument('--dataset-type', type=str, default="validation", help="Dataset type to use (train, validation, mini, etc.)")
     parser.add_argument('--num-dataloader-workers', type=int, default=1, help="Number of dataloader workers to use.")
+    parser.add_argument('--no-progress-bar', action='store_true', help="Do not display progress bar during execution.")
+
     args = parser.parse_args()
     main(args)

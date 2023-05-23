@@ -134,7 +134,12 @@ def train_model(args):
 
         model.train()  # set model to training mode
 
-        for idx, batch in enumerate(tqdm(data_loader), start=1):
+        # Wrap data_loader with tqdm to show a progress bar, unless --no-progress-bar was specified
+        iterable_data_loader = data_loader
+        if not args.no_progress_bar:
+            iterable_data_loader = tqdm(data_loader)
+
+        for idx, batch in enumerate(iterable_data_loader, start=1):
             # Transfer data to the appropriate device
             images = batch["image"].to(device)
             input_ids = batch["input_ids"].to(device)
@@ -185,5 +190,6 @@ if __name__ == "__main__":
     parser.add_argument('--from-snapshot', type=str, help="Snapshot name to load the model and dataset from.")
     parser.add_argument('--lightweight-snapshots', action='store_true', help="Use this flag to save lightweight snapshots only (doesn't save pretrained bert or vit weights)")
     parser.add_argument('--skip-s3-storage', action='store_true', help='Use this flag to skip storing new snapshots in S3')
+    parser.add_argument('--no-progress-bar', action='store_true', help='Use this flag to disable the progress bar during training')
     args = parser.parse_args()
     train_model(args)
