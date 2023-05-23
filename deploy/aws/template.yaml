@@ -3,6 +3,7 @@ Parameters:
     Type: String
     Default: |
       #!/bin/bash
+      yum install -y expect
       sudo -u ec2-user bash <<EOF
       cd /home/ec2-user
       git clone https://github.com/ashleyholman/vqa.git
