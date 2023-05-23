@@ -46,23 +46,17 @@ def file_exists_in_s3(s3_url):
     return len(objs) > 0 and objs[0].key == s3_key
 
 def download_file_from_s3(s3_url, target_path):
-    """Download a file from S3 using AWS CLI"""
+    """Download a file from S3 using boto3"""
+    s3 = boto3.resource('s3')
     bucket_name = s3_url.split('/')[2]
     s3_key = '/'.join(s3_url.split('/')[3:])
 
-    # Use AWS CLI instead of boto3 here, to get the nice progress bar in the output.
     try:
         print(f"Using s3 mirror for {s3_key}...")
-        subprocess.check_call([
-            'aws',
-            's3',
-            'cp',
-            f's3://{bucket_name}/{s3_key}',
-            target_path
-        ])
+        s3.Bucket(bucket_name).download_file(s3_key, target_path)
         return True
-    except subprocess.CalledProcessError:
-        # The download failed
+    except ClientError as e:
+        print("The download failed: ", e)
         return False
 
 def download_file(url, target_path):
