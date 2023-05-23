@@ -76,7 +76,7 @@ def main(args):
     # No need to track gradients for this
     print("Evaluating model...")
     with torch.no_grad():
-        for batch in data_loader:
+        for idx, batch in enumerate(data_loader, start=1):
             # Transfer data to the appropriate device
             images = batch["image"].to(device)
             input_ids = batch["input_ids"].to(device)
@@ -92,6 +92,10 @@ def main(args):
 
             # Update the performance tracker
             performance_tracker.update_metrics(logits, labels)
+
+            # Print average loss every 500 batches
+            if idx % 500 == 0:
+                print(f"\nBatch {idx}, Average Loss: {performance_tracker.get_metrics()['loss']:.4f}")
 
     # Print performance report
     performance_tracker.print_report()
