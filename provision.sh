@@ -16,5 +16,4 @@ python src/scripts/fetch_datasets.py
 echo "==> Make mini dataset"
 ./src/scripts/make_mini_dataset.sh
 echo "==> Enter work loop"
-nohup python src/scripts/do_work.py >> train.log & 2>&1
-
+nohup python src/scripts/do_work.py --num-dataloader-workers 8 >> train.log & 2>&1
