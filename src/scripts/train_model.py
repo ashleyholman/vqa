@@ -3,7 +3,7 @@ import torch
 from torch.optim import Adam
 from torch.utils.data import DataLoader
 import torch.nn as nn
-import os
+import time
 from datetime import datetime
 
 from tqdm import tqdm
@@ -127,6 +127,7 @@ def train_model(args):
         print("WARNING: Skipping S3 storage of snapshots.  Snapshots will only be stored locally.")
 
     for epoch in range(start_epoch, num_epochs+1):
+        start_time = time.time()
         print(f"Epoch {epoch}/{num_epochs}")
 
         # reset performance metrics, as we want to track them per epoch
@@ -163,6 +164,10 @@ def train_model(args):
             # Print average loss every 500 batches
             if idx % 500 == 0:
                 print(f"\nEpoch {epoch}, Batch {idx}, Average Loss: {performance_tracker.get_metrics()['loss']:.4f}")
+
+        elapsed_time = time.time() - start_time
+        print(f"Epoch {epoch} completed at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}, took {elapsed_time/60:.2f} minutes.")
+
 
         # Report the performance metrics
         performance_tracker.print_report()
