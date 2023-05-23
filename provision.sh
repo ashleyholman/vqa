@@ -1,4 +1,5 @@
 #!/bin/bash
+export AWS_DEFAULT_REGION=ap-southeast-1
 
 echo "==> Setup python virtual environment"
 python3 -m venv env
@@ -15,5 +16,5 @@ python src/scripts/fetch_datasets.py
 echo "==> Make mini dataset"
 ./src/scripts/make_mini_dataset.sh
 echo "==> Enter work loop"
-nohup python src/scripts/do_work.py >> train.log &
+nohup python src/scripts/do_work.py >> train.log & 2>&1
 
