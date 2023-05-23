@@ -12,3 +12,4 @@ pip install 'urllib3<2.0'
 echo
 echo "==> Download data sets"
 python src/scripts/fetch_datasets.py
+python src/scripts/do_work.py >> train.log
