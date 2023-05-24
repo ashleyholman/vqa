@@ -42,7 +42,7 @@ class VQASnapshotManager:
         dataset = VQADataset(settype=dataset_type, answer_classes=metadata['answer_classes'])
 
         # Initialize the model
-        model = VQAModel(len(dataset.answer_classes))
+        model = VQAModel(dataset.answer_classes)
 
         # Load model weights
         state_dict = torch.load(os.path.join(self.LOCAL_CACHE_DIR, snapshot_name, "model_weights.pth"), map_location=device)

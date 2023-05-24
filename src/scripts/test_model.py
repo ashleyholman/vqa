@@ -62,6 +62,8 @@ def main(args):
         print("Using untrained model")
 
     model.to(device)
+    # FIXME: Handle this in snapshot manager or VQADataset class
+    model.answer_embeddings = model.answer_embeddings.to(device)
 
     # Create a DataLoader to handle batching of the dataset
     data_loader = DataLoader(dataset, batch_size=16, num_workers=num_workers, shuffle=False)

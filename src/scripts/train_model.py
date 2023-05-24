@@ -74,7 +74,7 @@ def train_model(args):
         dataset = VQADataset(dataset_type)
 
         # load model
-        model = VQAModel(len(dataset.answer_classes))
+        model = VQAModel(dataset.answer_classes)
 
         # Create a new optimizer
         optimizer = Adam(model.parameters(), lr=1e-4)
@@ -87,6 +87,8 @@ def train_model(args):
         print('Training on GPU...')
         # Tell PyTorch to use the GPU.
         model = model.to(device)
+        # FIXME: Make this handled in snapshot manager or VQAModel class
+        model.answer_embeddings = model.answer_embeddings.to(device)
         # If multiple GPUs are available, wrap model with DataParallel
         if torch.cuda.device_count() > 1:
             print(f"Let's use {torch.cuda.device_count()} GPUs!")
