@@ -4,7 +4,7 @@ import torch.nn as nn
 from transformers import ViTModel, BertModel
 
 class VQAModel(nn.Module):
-    MODEL_NAME = "lr1e4_weighted_dropout"
+    MODEL_NAME = "lr1e4_weighted_dropout_batchnorm"
 
     def __init__(self, num_answer_classes, hidden_size=768):
         super().__init__()
@@ -20,8 +20,11 @@ class VQAModel(nn.Module):
         self.vit_transform = nn.Linear(self.vit.config.hidden_size, hidden_size)
         self.bert_transform = nn.Linear(self.bert.config.hidden_size, hidden_size)
 
-        # Dropout layer added here
+        # Dropout layer
         self.dropout = nn.Dropout(0.1)
+
+        # Batch Normalization Layer
+        self.batch_norm = nn.BatchNorm1d(hidden_size * 2)
 
         self.head = nn.Linear(hidden_size * 2, num_answer_classes)
 
@@ -30,7 +33,8 @@ class VQAModel(nn.Module):
         question_embeddings = self.bert_transform(self.bert(input_ids, attention_mask).pooler_output) 
         embeddings = torch.cat([image_embeddings, question_embeddings], dim=1)
 
-        # Apply dropout to the embeddings before passing them to the head layer
+        # Apply batch normalization and dropout to the embeddings before passing them to the head layer
+        embeddings = self.batch_norm(embeddings)
         embeddings = self.dropout(embeddings)
 
         logits = self.head(embeddings)
