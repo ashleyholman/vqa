@@ -125,6 +125,11 @@ def main():
     args = parser.parse_args()
 
     data = fetch_metrics(args.model_name)
+
+    if not data:
+        print(f"No metrics found for model: {args.model_name}")
+        return
+
     if args.csv:
         print_csv(data)
     else:
