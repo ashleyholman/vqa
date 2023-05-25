@@ -10,10 +10,6 @@ class VQAModel(nn.Module):
     def __init__(self, answer_classes_text, hidden_size=768):
         super().__init__()
 
-        # We only need the BERT tokenizer and model for answer embedding computation
-        self.bert = BertModel.from_pretrained('bert-base-uncased')
-        self.tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
-
         # Our model will apply a transform to each embedding before concatenating them
         self.image_transform = nn.Linear(hidden_size, hidden_size)
         self.question_transform = nn.Linear(hidden_size, hidden_size)
@@ -36,9 +32,12 @@ class VQAModel(nn.Module):
         self.recompute_answer_embeddings(answer_classes_text)
 
     def recompute_answer_embeddings(self, answer_classes_text):
-        inputs = self.tokenizer(answer_classes_text, return_tensors="pt", padding=True, truncation=True, max_length=50)
+        bert = BertModel.from_pretrained('bert-base-uncased')
+        tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
+
+        inputs = tokenizer(answer_classes_text, return_tensors="pt", padding=True, truncation=True, max_length=50)
         with torch.no_grad():
-            self.answer_embeddings = self.bert(**inputs).pooler_output
+            self.answer_embeddings = bert(**inputs).pooler_output
 
     def forward(self, image_embeddings, question_embeddings):
         image_embeddings = self.image_transform(image_embeddings)
