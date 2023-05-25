@@ -124,7 +124,7 @@ def train_model(args):
         print("WARNING: Skipping S3 storage of snapshots.  Snapshots will only be stored locally.")
 
     for epoch in range(start_epoch, num_epochs+1):
-        is_snapshot_epoch = (epoch % 25 == 0)
+        is_snapshot_epoch = (epoch % 200 == 0)
 
         start_time = time.time()
         print(f"Epoch {epoch}/{num_epochs}")
