@@ -5,7 +5,7 @@ import torch.nn.functional as F
 from transformers import BertTokenizer, BertModel
 
 class VQAModel(nn.Module):
-    MODEL_NAME = "lr1e4_weighted_dropout_batchnorm_answerembeddings_inputembeddings"
+    MODEL_NAME = "lr1e3_weighted_dropout_batchnorm_answerembeddings_inputembeddings"
 
     def __init__(self, answer_classes_text, hidden_size=768):
         super().__init__()
