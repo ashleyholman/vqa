@@ -30,7 +30,7 @@ MINI_QUESTIONS_JSON_FILE_NAME = 'data/subset_questions.json'
 MINI_IMAGE_PREFIX = 'data/train2014/COCO_train2014_'
 
 class VQADataset(Dataset):
-    def __init__(self, settype='train', answer_classes=[], with_input_ids=False):
+    def __init__(self, settype='train', answer_classes=[], with_input_ids=False, with_images_features=False):
         self.images = []
         self.input_ids = []
         self.attention_masks = []
@@ -42,6 +42,7 @@ class VQADataset(Dataset):
         self.image_embeddings = []
         self.image_count = 0
         self.with_input_ids = with_input_ids
+        self.with_images_features = with_images_features
         self.embeddings_loaded = False
 
         self.bert_tokenizer = BertTokenizer.from_pretrained(BERT_MODEL_NAME)
@@ -236,10 +237,8 @@ class VQADataset(Dataset):
 
     def __getitem__(self, idx):
         image_id = self.image_ids[idx]
-        image = self.preprocess_image(image_id)
 
         item = {
-            'image': image,
             'label': self.labels[idx],
             'image_embedding': self.image_embeddings[idx],
             'question_embedding': self.question_embeddings[idx]
@@ -248,5 +247,8 @@ class VQADataset(Dataset):
         if self.with_input_ids:
             item['input_ids'] = self.input_ids[idx]
             item['attention_mask'] = self.attention_masks[idx]
+
+        if self.with_images_features:
+            item['image'] = self.preprocess_image(image_id)
 
         return item
