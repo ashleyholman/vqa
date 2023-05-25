@@ -5,7 +5,7 @@ import torch.nn.functional as F
 from transformers import BertTokenizer, BertModel
 
 class VQAModel(nn.Module):
-    MODEL_NAME = "lr1e3_weighted_dropout_batchnorm_answerembeddings_inputembeddings"
+    MODEL_NAME = "lr1e3_weighted_dropout_batchnorm_answerembeddings_inputembeddings_hidden2"
 
     def __init__(self, answer_classes_text, hidden_size=768):
         super().__init__()
@@ -25,7 +25,11 @@ class VQAModel(nn.Module):
         self.batch_norm = nn.BatchNorm1d(hidden_size * 2)
 
         # Layer transforming embeddings for comparison with answer embeddings
-        self.embedding_transform = nn.Linear(hidden_size * 2, hidden_size)
+        self.embedding_transform = nn.Sequential(
+            nn.Linear(hidden_size * 2, hidden_size),
+            nn.ReLU(),
+            nn.Linear(hidden_size, hidden_size),
+        )
 
         # Compute and store answer embeddings
         print("Computing answer embeddings...")
