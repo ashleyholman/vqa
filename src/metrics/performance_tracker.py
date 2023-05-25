@@ -26,10 +26,9 @@ class LossMetric(Metric):
         self.total_loss = 0.0
         self.total_count = 0
 
-    def update(self, logits, labels):
-        loss = cross_entropy(logits, labels)
-        self.total_loss += loss.item() * logits.size(0)
-        self.total_count += logits.size(0)
+    def update(self, loss_value, count):
+        self.total_loss += loss_value * count
+        self.total_count += count
 
     def value(self):
         return self.total_loss / max(1, self.total_count)
@@ -143,9 +142,19 @@ class PerformanceTracker:
         for metric in self.metrics.values():
             metric.reset()
 
-    def update_metrics(self, logits, labels):
-        for metric in self.metrics.values():
-            metric.update(logits, labels)
+    def update_metrics(self, logits, labels, loss):
+        for metric in self.metrics:
+            if isinstance(metric, LossMetric):
+                # special case for LossMetric
+                metric.update(loss, logits.size(0))
+            else:
+                metric.update(logits, labels)
+    def update_metrics(self, logits, labels, loss=None):
+        for metric_name, metric in self.metrics.items():
+            if metric_name == 'loss':
+                metric.update(loss, logits.size(0))
+            else:
+                metric.update(logits, labels)
 
     def get_metrics(self):
         return {name: metric.value() for name, metric in self.metrics.items()}

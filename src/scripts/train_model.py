@@ -157,11 +157,7 @@ def train_model(args):
 
             # Use PerformanceTracker to track the model's accuracy, loss etc
             if is_snapshot_epoch:
-                performance_tracker.update_metrics(logits, labels)
-
-            # Print average loss every 500 batches
-            if idx % 500 == 0:
-                print(f"\nEpoch {epoch}, Batch {idx}, Average Loss: {performance_tracker.get_metrics()['loss']:.4f}")
+                performance_tracker.update_metrics(logits, labels, loss.item())
 
         elapsed_time = time.time() - start_time
         print(f"Epoch {epoch} completed at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}, took {elapsed_time/60:.2f} minutes.")
