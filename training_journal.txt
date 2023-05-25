@@ -142,3 +142,54 @@ our model, since these weights are frozen I should be able to pre-compute them
 once and store to disk.  Then keep them all in memory during training and just
 feed the embeddings directly into my model.  Should hopefully be a huge speedup
 for training.
+
+== Thu 25th May 2023 ==
+Spent most of the day implementing the speedup idea from yesterday.  Now the
+question text embeddings and image embeddings are pre-computed and stored in the
+data directory in "<dataset>_embeddings.pt".  These are loaded by the dataset
+when it is initialised (or generated and stored if the file isn't yet present).
+The embeddings files will also be bootstrapped from S3 on node startup to avoid
+having to generate them again.
+
+Now, the image and question embeddings are fed directly into the model.  The
+model no longer has BERT and VIT in its forward pass.  As a result, training has
+gone down from ~36 mins per epoch to ~4 seconds.  Validation has gone from ~15
+mins per epoch to ~2 seconds.  Also, snapshot sizes are down to ~34MB now as
+they no longer contain ViT/BERT weights.
+
+At first, the optimization didn't have as much impact as I was hoping, but then
+I kept increasing batch size more and more and it kept getting quicker.  Ended
+up with batch size 5000.  Looks like I can fit huge batches on the GPU now given
+that I have far less parameters in the model.
+
+In some ways it's embarassing that such a huge and in-hindsight obvious
+optimization was available, yet I had already spent days of GPU time training
+very slowly.  However it only took a few days to realize, so it's not that bad :)
+
+At some point I might want to explore finetuning the ViT/Bert weights, which
+will require going back to slow training, but I'll save that for later once I've
+found the best architecture for my layers on top.
+
+This increase in training speed has really amazed me because now my
+possibilities for training models has gone way up.  My previous models where I
+waited overnight to get 10 epochs, could now be trained for 5000+ epochs in the
+same time period, so I'll be able to go back and explore some of those other
+architectures to see where they top out in terms of their performance metrics.
+
+In terms of actual model architecture, I did get some results from training the
+new "answer embeddings" architecture, and the performance is shockingly bad, and
+the model just doesn't seem to be able to learn anything.  Accuracy starts at
+0.2% and barely can make it over 0.5% with further training.  I experimented
+with larger learning rates but still couldn't get it to improve much. I also
+tried adding an additional hidden layer in case the model didn't have enough
+capacity, but the results only increased slightly.  I could experiment with more
+layers or using a transformer.  However, given how bad the accuracy is, and how
+slow the learning is occuring, it might be a better option to go back to using a
+simple linear classifier, as that showed much better results.  Possibly the
+problem of producing a BERT embedding that represents the answer, is just a way
+harder problem than predicting an output class, but I would need to explore that
+more to understand exactly why it's bad.
+
+I'm not ready to give up entirely on answer embeddings yet, but I think I'll go
+back to the simple classifier first to see what results I can get with my hugely
+increased ability to train for large numbers of epochs in a short time.
