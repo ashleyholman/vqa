@@ -100,11 +100,11 @@ def train_model(args):
 
     # Create a DataLoader to handle batching of the dataset
     print("Loading dataset..")
-    batch_size = 16
+    batch_size = 5000
     if isModelParallel:
         batch_size = batch_size * torch.cuda.device_count()
     print(f"Using batch size: {batch_size}")
-    data_loader = DataLoader(dataset, batch_size=16, num_workers=num_workers, shuffle=True)
+    data_loader = DataLoader(dataset, batch_size=batch_size, num_workers=num_workers, shuffle=True)
 
     ### Use class weighting to counteract class imbalance
     class_counts = torch.Tensor(dataset.class_counts)
@@ -117,18 +117,21 @@ def train_model(args):
     class_weights = class_weights.to(device)
     loss_function = torch.nn.CrossEntropyLoss(weight=class_weights)
 
+    model.train()  # set model to training mode
+
     print("Beginning training.")
     if (args.skip_s3_storage):
         print("WARNING: Skipping S3 storage of snapshots.  Snapshots will only be stored locally.")
 
     for epoch in range(start_epoch, num_epochs+1):
+        is_snapshot_epoch = (epoch % 25 == 0)
+
         start_time = time.time()
         print(f"Epoch {epoch}/{num_epochs}")
 
         # reset performance metrics, as we want to track them per epoch
-        performance_tracker.reset()
-
-        model.train()  # set model to training mode
+        if is_snapshot_epoch:
+            performance_tracker.reset()
 
         # Wrap data_loader with tqdm to show a progress bar, unless --no-progress-bar was specified
         iterable_data_loader = data_loader
@@ -153,7 +156,8 @@ def train_model(args):
             optimizer.step()
 
             # Use PerformanceTracker to track the model's accuracy, loss etc
-            performance_tracker.update_metrics(logits, labels)
+            if is_snapshot_epoch:
+                performance_tracker.update_metrics(logits, labels)
 
             # Print average loss every 500 batches
             if idx % 500 == 0:
@@ -163,23 +167,21 @@ def train_model(args):
         print(f"Epoch {epoch} completed at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}, took {elapsed_time/60:.2f} minutes.")
 
 
-        # Report the performance metrics
-        performance_tracker.print_report()
+        if is_snapshot_epoch:
+            # Report the performance metrics
+            performance_tracker.print_report()
+            metrics_manager.store_performance_metrics(model.MODEL_NAME, dataset_type, epoch, performance_tracker.get_metrics())
+            # Save a snapshot
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            snapshot_name = f"snapshot_{model.MODEL_NAME}_{dataset_type}_epoch_{epoch}_{timestamp}"
+            print(f"Saving snapshot '{snapshot_name}'")
 
-        # Store the metrics 
-        metrics_manager.store_performance_metrics(model.MODEL_NAME, dataset_type, epoch, performance_tracker.get_metrics())
-
-        # Save a snapshot after each epoch
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        snapshot_name = f"snapshot_{model.MODEL_NAME}_{dataset_type}_epoch_{epoch}_{timestamp}"
-        print(f"Saving snapshot '{snapshot_name}'")
-
-        # Save the model and dataset state
-        if isModelParallel:
-            # When saving a parallel model, the original model is wrapped and stored in model.module.
-            snapshot_manager.save_snapshot(snapshot_name, model.module, optimizer, dataset, epoch, performance_tracker.get_metrics()['loss'], lightweight=args.lightweight_snapshots, skipS3Storage=args.skip_s3_storage)
-        else:
-            snapshot_manager.save_snapshot(snapshot_name, model, optimizer, dataset, epoch, performance_tracker.get_metrics()['loss'], lightweight=args.lightweight_snapshots, skipS3Storage=args.skip_s3_storage)
+            # Save the model and dataset state
+            if isModelParallel:
+                # When saving a parallel model, the original model is wrapped and stored in model.module.
+                snapshot_manager.save_snapshot(snapshot_name, model.module, optimizer, dataset, epoch, performance_tracker.get_metrics()['loss'], lightweight=args.lightweight_snapshots, skipS3Storage=args.skip_s3_storage)
+            else:
+                snapshot_manager.save_snapshot(snapshot_name, model, optimizer, dataset, epoch, performance_tracker.get_metrics()['loss'], lightweight=args.lightweight_snapshots, skipS3Storage=args.skip_s3_storage)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Train a VQA model')

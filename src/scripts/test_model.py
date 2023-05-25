@@ -66,7 +66,7 @@ def main(args):
     model.answer_embeddings = model.answer_embeddings.to(device)
 
     # Create a DataLoader to handle batching of the dataset
-    data_loader = DataLoader(dataset, batch_size=16, num_workers=num_workers, shuffle=False)
+    data_loader = DataLoader(dataset, batch_size=5000, num_workers=num_workers, shuffle=False)
 
     # Wrap data_loader with tqdm to show a progress bar, unless --no-progress-bar was specified
     if not args.no_progress_bar:
