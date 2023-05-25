@@ -30,7 +30,7 @@ MINI_QUESTIONS_JSON_FILE_NAME = 'data/subset_questions.json'
 MINI_IMAGE_PREFIX = 'data/train2014/COCO_train2014_'
 
 class VQADataset(Dataset):
-    def __init__(self, settype='train', answer_classes=[]):
+    def __init__(self, settype='train', answer_classes=[], with_input_ids=False):
         self.images = []
         self.input_ids = []
         self.attention_masks = []
@@ -40,8 +40,9 @@ class VQADataset(Dataset):
         self.settype = settype
         self.question_embeddings = []
         self.image_embeddings = []
-
         self.image_count = 0
+        self.with_input_ids = with_input_ids
+        self.embeddings_loaded = False
 
         self.bert_tokenizer = BertTokenizer.from_pretrained(BERT_MODEL_NAME)
         self.vit_preprocessor = ViTImageProcessor.from_pretrained(VIT_MODEL_NAME)
@@ -84,29 +85,38 @@ class VQADataset(Dataset):
         # Build a count of the number of answers per class.  This can be used to analyse class imbalance.
         self.class_counts = self._count_classes(annotations, len(self.answer_classes))
 
-        # Our dataset will have one sample per question, each question will have one image and one answer class.
-        # So, iterate over the questions to preprocess the dataset one sample at a time
-        print("Tokenizing question text...")
-        for question in questions:
-            encoding = self.bert_tokenizer.encode_plus(
-                question['question'], 
-                max_length=30, 
-                truncation=True, 
-                padding='max_length', 
-                return_tensors='pt'
-            )
-            self.input_ids.append(encoding['input_ids'].flatten())
-            self.attention_masks.append(encoding['attention_mask'].flatten())
-            self.labels.append(question_to_annotation[question['question_id']]['answer_class_id'])
-            self.image_ids.append(question['image_id'])
-            
-        # Attempt to load pre-processed embeddings for questions and images. If
-        # not present, generate and save them.
+        # Attempt to load pre-processed embeddings for questions and images.
         try:
             self._load_embeddings()
+            self.embeddings_loaded = True
+            print(f"Embeddings loaded for {settype}.")
         except FileNotFoundError:
-            print(f"No embedding file found for {settype}. Generating embeddings...")
+            print(f"No embedding file found for {settype}. Generating embeddings later...")
+
+        # Tokenizing the question text into input_ids takes time.  Only do it if
+        # we need to, which is under one of two conditions:
+        # 1) The user requested input_ids to be in the dataset by setting with_input_ids=True
+        # 2) We don't have embeddings loaded, so we need to generate them which requires input_ids.
+        tokenize_question_text = self.with_input_ids or not self.embeddings_loaded
+
+        for question in questions:
+            if tokenize_question_text:
+                encoding = self.bert_tokenizer.encode_plus(
+                    question['question'],
+                    max_length=30,
+                    truncation=True,
+                    padding='max_length',
+                    return_tensors='pt'
+                )
+                self.input_ids.append(encoding['input_ids'].flatten())
+                self.attention_masks.append(encoding['attention_mask'].flatten())
+
+            self.labels.append(question_to_annotation[question['question_id']]['answer_class_id'])
+            self.image_ids.append(question['image_id'])
+
+        if not self.embeddings_loaded:
             self._generate_and_save_all_embeddings()
+            self.embeddings_loaded = True
 
         print("Done initialising dataset")
 
@@ -222,17 +232,21 @@ class VQADataset(Dataset):
         self.question_embeddings = all_text_embeddings
 
     def __len__(self):
-        return len(self.input_ids)
+        return max(len(self.input_ids), len(self.question_embeddings))
 
     def __getitem__(self, idx):
         image_id = self.image_ids[idx]
         image = self.preprocess_image(image_id)
 
-        return {
+        item = {
             'image': image,
-            'input_ids': self.input_ids[idx],
-            'attention_mask': self.attention_masks[idx],
             'label': self.labels[idx],
             'image_embedding': self.image_embeddings[idx],
             'question_embedding': self.question_embeddings[idx]
         }
+
+        if self.with_input_ids:
+            item['input_ids'] = self.input_ids[idx]
+            item['attention_mask'] = self.attention_masks[idx]
+
+        return item
