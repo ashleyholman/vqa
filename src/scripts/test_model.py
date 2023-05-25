@@ -56,7 +56,7 @@ def main(args):
     else:
         # instantiate dataset and model from scratch
         dataset = VQADataset(dataset_type)
-        model = VQAModel(len(dataset.answer_classes))
+        model = VQAModel(dataset.answer_classes)
         model_name = model.MODEL_NAME
 
         print("Using untrained model")
@@ -80,13 +80,12 @@ def main(args):
     with torch.no_grad():
         for idx, batch in enumerate(data_loader, start=1):
             # Transfer data to the appropriate device
-            images = batch["image"].to(device)
-            input_ids = batch["input_ids"].to(device)
-            attention_mask = batch["attention_mask"].to(device)
+            question_embeddings = batch["question_embedding"].to(device)
+            image_embeddings = batch["image_embedding"].to(device)
             labels = batch["label"].to(device)
 
             # Run the model and get the predictions
-            logits = model(images, input_ids, attention_mask)
+            logits = model(image_embeddings, question_embeddings)
             _, preds = torch.max(logits, dim=1)
 
             # Calculate the loss

@@ -73,3 +73,72 @@ as it's quite severe:
      3     2     2     1]
 
 I'm going to test changing my loss function to use class weights.
+
+== Tue May 22 2023 ==
+Added class weights.  The model's overall accuracy performance starts a lot
+lower now compared to the previous model that quickly learnt to over-predict the
+dominant classes.
+
+Training accuracy after 6 epochs: 21% vs 45%
+Validation accuracy after 6 epochs: 21% vs 44%
+
+It's not clear that class weighting is actually something I should be using if I
+just care about producing the best score possible on the test set.  Letting the
+model learn the distribution of answers is resulting in much better performance.
+However, I do want to try to improve my model's ability to actually learn the
+VQA task in a general sense, so for now I will continue with weighted classes,
+even if performance is worse, so that I can work on improving its actual ability
+to learn.  Seeing the accuracy go up with weighted classes actually gives me
+confidence that the model is truely learning how to answer the questions using
+information from the image and text.
+
+Later, when I want to try to get as high a score as possbile, I might reduce the
+weighting, either remove it entirely or scale it back so they are partially
+weighted.
+
+== Tue 23rd May 2023 ==
+Took a detour to implement fully automated resuming of training, and validating
+of unvalidated snapshots, so that we are resilient to spot instance
+interruption. This will accelerate the pace of my experimentation as I no longer
+need to closely monitor training runs.
+
+This involved adding DDB records for snapshot metadata to make them queryable,
+so we can easily find new snapshots pending validation, as well as determine the latest
+epoch we've trained up to, for resuming training.
+
+After that, implemented dropout to try to address overfitting.  It hasn't seemed
+to make much different when I compare the before and after.
+
+== Wed 24th May 2023 ==
+
+Added batch normalization.  Didn't make any noticeable difference.
+
+Then, I had a thought.  Since I'm using answer classes, and each answer is only
+represented by a different index in my final layer, the model has no knowledge
+of the actual text corresponding to the answer.  As a human, I'm imagining how
+hard it would be to do a multiple choice test where the answer text was hidden,
+and you just had to figure out for yourself what each box might represent.  I
+figured the model would benefit from actually knowing what the text was for each
+answer.
+
+So, upon discussion with ChatGPT, we decided to use BERT to generate a static
+embedding for each answer class from its answer text.  Then, in our model,
+instead just passing the question and image embeddings through a final linear
+layer to produce logits, we instead produce our own embedding (of length 768;
+same size as BERT) to be compared with the answer embeddings.  Then, the final
+prediction layer computes a cosine similarity score from our model's embedding
+to the 1000 answer embeddings.
+
+The idea is to provide the model with semantically meaningful representations of
+the answer classes, to help it not only understand that two classes are
+different, but *how* they are different on a semantic level.
+
+Now I trained this, but the accuracy is staying very low but moving around in an
+unstable way.  Perhaps the learning rate needs to change now.
+
+However, I'm going to take a break from training to implement an optimization
+idea.  Rather than computing the BERT and ViT embeddings in the forward pass of
+our model, since these weights are frozen I should be able to pre-compute them
+once and store to disk.  Then keep them all in memory during training and just
+feed the embeddings directly into my model.  Should hopefully be a huge speedup
+for training.

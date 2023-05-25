@@ -38,6 +38,8 @@ class VQADataset(Dataset):
         self.image_ids = []
         self.images = {}
         self.settype = settype
+        self.question_embeddings = []
+        self.image_embeddings = []
 
         self.image_count = 0
 
@@ -98,10 +100,14 @@ class VQADataset(Dataset):
             self.labels.append(question_to_annotation[question['question_id']]['answer_class_id'])
             self.image_ids.append(question['image_id'])
             
-            # Pre-process the image if it hasn't been yet
-            #image_id = question['image_id']
-            #if self.images.get(image_id) is None:
-            #    self.preprocess_image(image_id)
+        # Attempt to load pre-processed embeddings for questions and images. If
+        # not present, generate and save them.
+        try:
+            self._load_embeddings()
+        except FileNotFoundError:
+            print(f"No embedding file found for {settype}. Generating embeddings...")
+            self._generate_and_save_all_embeddings()
+
         print("Done initialising dataset")
 
     # Our dataset has many answers per question, written by different humans.
@@ -155,58 +161,65 @@ class VQADataset(Dataset):
         # return the pixel_values features
         return features['pixel_values'].squeeze(0)
 
+    def _load_embeddings(self):
+        settype = self.settype
+        save_path = os.path.join(DATA_DIR, f'{settype}_embeddings.pt')
+
+        embeddings = torch.load(save_path)
+
+        self.image_embeddings = embeddings['image_embeddings']
+        self.question_embeddings = embeddings['question_embeddings']
+
     # This method is used to pre-compute the embeddings for all images and question text in the dataset.
     # This is so that we can feed the embeddings directly into our model at training/validation time,
     # rather than having to compute them on the fly.  This will *hopefully* provide a significant speedup
     # for training and validation.
-    def generate_and_save_all_embeddings(self, num_dataloader_workers=1):
+    def _generate_and_save_all_embeddings(self):
         BATCH_SIZE = 16
         device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-        # We need both images and questions for this operation
-        data_dataloader = DataLoader(self, batch_size=BATCH_SIZE, shuffle=False, num_workers=num_dataloader_workers)
-
         # Move both models to GPU if available
-        img_model = ViTModel.from_pretrained(VIT_MODEL_NAME).to(device)
-        txt_model = BertModel.from_pretrained(BERT_MODEL_NAME).to(device)
+        image_model = ViTModel.from_pretrained(VIT_MODEL_NAME).to(device)
+        text_model = BertModel.from_pretrained(BERT_MODEL_NAME).to(device)
 
-        all_img_embeddings = []
-        all_txt_embeddings = []
+        all_image_embeddings = []
+        all_text_embeddings = []
 
         print('Generating embeddings...')
 
-        for idx, batch in enumerate(data_dataloader, start=1):
-            images = batch['image'].to(device)  # move images to device
-            input_ids = batch['input_ids'].to(device)  # move input_ids to device
-            attention_masks = batch['attention_mask'].to(device)  # move attention_mask to device
+        for idx in range(0, len(self.image_ids), BATCH_SIZE):
+            batch_image_ids = self.image_ids[idx:idx+BATCH_SIZE]
+            batch_images = torch.stack([self.preprocess_image(image_id) for image_id in batch_image_ids]).to(device)
+
+            batch_input_ids = torch.stack(self.input_ids[idx:idx+BATCH_SIZE]).to(device)
+            batch_attention_masks = torch.stack(self.attention_masks[idx:idx+BATCH_SIZE]).to(device)
 
             with torch.no_grad():
-                img_embeddings = img_model(images)['pooler_output']
-                txt_embeddings = txt_model(input_ids, attention_mask=attention_masks)['pooler_output']
+                image_embeddings = image_model(batch_images)['pooler_output']
+                text_embeddings = text_model(batch_input_ids, attention_mask=batch_attention_masks)['pooler_output']
 
-            # Print the first 5 features of each tensor.
-            print('Image embeddings:\n', img_embeddings[:, :5])  # Takes all rows, but only first 5 columns
-            print('Text embeddings:\n', txt_embeddings[:, :5])  # Takes all rows, but only first 5 columns
+            all_image_embeddings.append(image_embeddings.cpu())
+            all_text_embeddings.append(text_embeddings.cpu())
 
-            all_img_embeddings.append(img_embeddings.cpu())
-            all_txt_embeddings.append(txt_embeddings.cpu())
+            if idx % (100*BATCH_SIZE) == 0:
+                print(f'Processed {idx}/{len(self)} images and questions...')
 
-            if idx % 1 == 0:
-                this_batch_size = batch['image'].shape[0]
-                print(f'Processed {((idx-1) * BATCH_SIZE)+this_batch_size}/{len(self)} images and questions...')
-
-        all_img_embeddings = torch.cat(all_img_embeddings)
-        all_txt_embeddings = torch.cat(all_txt_embeddings)
-        print(f'Finished processing {len(all_img_embeddings)} images and questions...')
+        all_image_embeddings = torch.cat(all_image_embeddings)
+        all_text_embeddings = torch.cat(all_text_embeddings)
+        print(f'Finished processing {len(all_image_embeddings)} images and questions...')
 
         save_path = os.path.join(DATA_DIR, f'{self.settype}_embeddings.pt')
 
         torch.save({
-            'img_embeddings': all_img_embeddings,
-            'txt_embeddings': all_txt_embeddings
+            'image_embeddings': all_image_embeddings,
+            'question_embeddings': all_text_embeddings
         }, save_path)
 
         print(f'All embeddings saved to {save_path}.')
+
+        # Store embeddings to member variables directly to avoid disk read after generation
+        self.image_embeddings = all_image_embeddings
+        self.question_embeddings = all_text_embeddings
 
     def __len__(self):
         return len(self.input_ids)
@@ -219,5 +232,7 @@ class VQADataset(Dataset):
             'image': image,
             'input_ids': self.input_ids[idx],
             'attention_mask': self.attention_masks[idx],
-            'label': self.labels[idx]
+            'label': self.labels[idx],
+            'image_embedding': self.image_embeddings[idx],
+            'question_embedding': self.question_embeddings[idx]
         }

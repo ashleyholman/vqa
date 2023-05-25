@@ -74,6 +74,7 @@ def train_model(args):
         dataset = VQADataset(dataset_type)
 
         # load model
+        print("Answer classes: ", dataset.answer_classes)
         model = VQAModel(dataset.answer_classes)
 
         # Create a new optimizer
@@ -96,14 +97,6 @@ def train_model(args):
             isModelParallel = True
     else:
         print('Training on CPU...')
-
-    # We want to freeze the BERT and ViT parameters for now.  Just train our model's new layers.
-    print(f"Freezing BERT and ViT parameters")
-    for param in model.vit.parameters():
-        param.requires_grad = False
-
-    for param in model.bert.parameters():
-        param.requires_grad = False
 
     # Create a DataLoader to handle batching of the dataset
     print("Loading dataset..")
@@ -144,16 +137,15 @@ def train_model(args):
 
         for idx, batch in enumerate(iterable_data_loader, start=1):
             # Transfer data to the appropriate device
-            images = batch["image"].to(device)
-            input_ids = batch["input_ids"].to(device)
-            attention_mask = batch["attention_mask"].to(device)
+            question_embeddings = batch["question_embedding"].to(device)
+            image_imbeddings = batch["image_embedding"].to(device)
             labels = batch["label"].to(device)
 
             # Clear the gradients
             optimizer.zero_grad()
 
             # Forward pass
-            logits = model(images, input_ids, attention_mask)
+            logits = model(image_imbeddings, question_embeddings)
             loss = loss_function(logits, labels)
 
             # Backward pass and optimize
