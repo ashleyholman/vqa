@@ -78,7 +78,7 @@ def train_model(args):
         model = VQAModel(dataset.answer_classes)
 
         # Create a new optimizer
-        optimizer = Adam(model.parameters(), lr=1e-3)
+        optimizer = Adam(model.parameters(), lr=1e-2)
 
         # epoch's are 1-indexed for ease of understanding by the user
         start_epoch = 1
