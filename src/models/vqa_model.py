@@ -7,7 +7,6 @@ from transformers import BertTokenizer, BertModel
 from src.models.model_configuration import ModelConfiguration
 
 class VQAModel(nn.Module):
-    MODEL_NAME = "lr1e2_weighted_dropout_batchnorm_answerembeddings_inputembeddings_hidden2"
     INPUT_EMBEDDINGS_SIZE = 768
 
     def __init__(self, answer_classes_text=None):

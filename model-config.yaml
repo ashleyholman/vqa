@@ -1,3 +1,6 @@
+###### model name ######
+model_name: turbo_lt1e3_weighted_answerembed_1hidden
+
 ###### model architecture-related settings ######
 num_hidden_layers: 1
 hidden_size: 768
@@ -5,7 +8,7 @@ use_answer_embeddings: true
 
 ###### training-related hyperparameters ######
 batch_size: 5000
-learning_rate: 1.e-2
+learning_rate: 1.e-3
 shuffle: true
 
 ###### loss-function parameters ######
@@ -17,4 +20,5 @@ use_class_weights: true
 # only be emitted for these epochs, because snapshots are needed for getting
 # validation metrics, hence this setting will also determine the resolution of
 # performance graphs.
-snapshot_every_epochs: 100
+#snapshot_every_epochs: 100
+snapshot_every_epochs: 10

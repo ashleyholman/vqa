@@ -4,6 +4,7 @@ import time
 from src.snapshots.vqa_snapshot_manager import VQASnapshotManager
 from src.metrics.metrics_manager import MetricsManager
 from src.models.vqa_model import VQAModel
+from src.models.model_configuration import ModelConfiguration
 
 def get_work(model_name, dataset_type):
     print(f"Finding unvalidated snapshots for model '{model_name}' and dataset type '{dataset_type}'")
@@ -89,7 +90,8 @@ def main():
         time.sleep(5)
 
 def main_loop(args):
-    snapshots_to_validate, latest_snapshot_epoch, latest_snapshot_name = get_work(VQAModel.MODEL_NAME, args.dataset_type)
+    config = ModelConfiguration()
+    snapshots_to_validate, latest_snapshot_epoch, latest_snapshot_name = get_work(config.model_name, args.dataset_type)
     for snapshot_name in snapshots_to_validate:
         print(f"Validating snapshot: {snapshot_name}")
         validate_snapshot(snapshot_name, args.num_dataloader_workers, args.dataset_type)

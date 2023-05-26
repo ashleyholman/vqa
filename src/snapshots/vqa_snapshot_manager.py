@@ -10,6 +10,7 @@ from decimal import Decimal
 from torch.optim import Adam
 
 from src.data.vqa_dataset import VQADataset
+from src.models.model_configuration import ModelConfiguration
 from src.models.vqa_model import VQAModel
 from src.snapshots.snapshot import Snapshot
 from src.util.dynamodb_helper import DynamoDBHelper
@@ -27,6 +28,7 @@ class VQASnapshotManager:
     def __init__(self):
         self.s3_client = boto3.client('s3')
         self.ddb_helper = DynamoDBHelper()
+        self.config = ModelConfiguration()
 
         # ensure caching dir exists
         os.makedirs(self.LOCAL_CACHE_DIR, exist_ok=True)
@@ -88,7 +90,7 @@ class VQASnapshotManager:
             'settype': dataset.settype,
             'answer_classes': dataset.answer_classes,
             'lightweight': lightweight,
-            'model_version': model.MODEL_NAME,
+            'model_version': self.config.model_name,
             'epoch': epoch,
             'loss': loss,
             'timestamp': datetime.now().strftime("%Y%m%d_%H%M%S"),
@@ -115,7 +117,7 @@ class VQASnapshotManager:
 
         # Insert DDB record
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        pk = f"snapshot:{model.MODEL_NAME}:{dataset.settype}"
+        pk = f"snapshot:{self.config.model_name}:{dataset.settype}"
         sk = f"{epoch}:{timestamp}"  # Using epoch number
         self.ddb_helper.put_item(pk, sk, metadata)
 

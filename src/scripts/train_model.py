@@ -48,8 +48,8 @@ def train_model(args):
             print(f"ERROR: Dataset type '{dataset_type}' does not match the dataset type in the snapshot '{snapshot.get_metadata()['dataset_type']}'.")
             return
 
-        if (snapshot.get_metadata()["model_version"] != VQAModel.MODEL_NAME):
-            print(f"ERROR: Model name '{VQAModel.MODEL_NAME}' does not match the model name in the snapshot '{snapshot.get_metadata()['model_name']}'.")
+        if (snapshot.get_metadata()["model_version"] != config.model_name):
+            print(f"ERROR: Model name '{config.model_name}' does not match the model name in the snapshot '{snapshot.get_metadata()['model_name']}'.")
             return
 
         print(f"Using snapshot: {args.from_snapshot}")
@@ -174,10 +174,10 @@ def train_model(args):
         if is_snapshot_epoch:
             # Report the performance metrics
             performance_tracker.print_report()
-            metrics_manager.store_performance_metrics(model.MODEL_NAME, dataset_type, epoch, performance_tracker.get_metrics())
+            metrics_manager.store_performance_metrics(config.model_name, dataset_type, epoch, performance_tracker.get_metrics())
             # Save a snapshot
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            snapshot_name = f"snapshot_{model.MODEL_NAME}_{dataset_type}_epoch_{epoch}_{timestamp}"
+            snapshot_name = f"snapshot_{config.model_name}_{dataset_type}_epoch_{epoch}_{timestamp}"
             print(f"Saving snapshot '{snapshot_name}'")
 
             # Save the model and dataset state

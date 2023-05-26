@@ -59,7 +59,7 @@ def main(args):
         # instantiate dataset and model from scratch
         dataset = VQADataset(dataset_type)
         model = VQAModel(dataset.answer_classes)
-        model_name = model.MODEL_NAME
+        model_name = config.model_name
 
         print("Using untrained model")
 
