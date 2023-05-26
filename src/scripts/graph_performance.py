@@ -1,12 +1,14 @@
 import os
 import argparse
 import matplotlib.pyplot as plt
-from matplotlib.ticker import MaxNLocator
-from src.metrics.metrics_manager import MetricsManager
-
 import webbrowser
+
+from matplotlib.ticker import MaxNLocator
 from urllib.parse import urljoin
 from urllib.request import pathname2url
+
+from src.metrics.metrics_manager import MetricsManager
+from src.models.model_configuration import ModelConfiguration
 
 def fetch_metrics(model_name):
     metrics_manager = MetricsManager('graph-performance')
@@ -120,21 +122,29 @@ def print_csv(data):
 
 def main():
     parser = argparse.ArgumentParser(description='Fetch data from DynamoDB and plot the graph.')
-    parser.add_argument('--model-name', required=True, help='Name of the model')
+    group = parser.add_mutually_exclusive_group(required=True)
+    group.add_argument('--model-name', help='Name of the model to report on')
+    group.add_argument('--latest', action='store_true', help='Report on the latest model')
+
     parser.add_argument('--csv', action='store_true', help='Output data as CSV')
     args = parser.parse_args()
 
-    data = fetch_metrics(args.model_name)
+    if args.latest:
+        # use the latest model
+        model_name = ModelConfiguration().model_name
+    else:
+        model_name = args.model_name
+
+    data = fetch_metrics(model_name)
 
     if not data:
-        print(f"No metrics found for model: {args.model_name}")
+        print(f"No metrics found for model: {model_name}")
         return
 
     if args.csv:
         print_csv(data)
     else:
-        plot_graphs(data, args.model_name)
+        plot_graphs(data, model_name)
 
 if __name__ == '__main__':
     main()
-
