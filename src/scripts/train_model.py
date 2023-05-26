@@ -90,8 +90,9 @@ def train_model(args):
         print('Training on GPU...')
         # Tell PyTorch to use the GPU.
         model = model.to(device)
-        # FIXME: Make this handled in snapshot manager or VQAModel class
-        model.answer_embeddings = model.answer_embeddings.to(device)
+        if config.use_answer_embeddings:
+            # FIXME: Make this handled in snapshot manager or VQAModel class
+            model.answer_embeddings = model.answer_embeddings.to(device)
         # If multiple GPUs are available, wrap model with DataParallel
         if torch.cuda.device_count() > 1:
             print(f"Let's use {torch.cuda.device_count()} GPUs!")
