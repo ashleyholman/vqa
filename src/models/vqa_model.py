@@ -32,7 +32,7 @@ class VQAModel(nn.Module):
         # The output size will depend on whether we're predicting an output
         # class index directly, or producing an embedding to compare against
         # answer embeddings
-        if self.config.hidden_size > 0:
+        if self.config.num_hidden_layers > 0:
             head_input_size = self.config.hidden_size
         else:
             head_input_size = self.INPUT_EMBEDDINGS_SIZE * 2
