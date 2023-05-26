@@ -59,7 +59,15 @@ class VQAModel(nn.Module):
 
         inputs = tokenizer(answer_classes_text, return_tensors="pt", padding=True, truncation=True, max_length=50)
         with torch.no_grad():
-            self.answer_embeddings = F.normalize(bert(**inputs).pooler_output)
+            answer_embeddings = bert(**inputs).pooler_output
+            if self.config.use_answer_embedding_z_normalization:
+                print("Using z-normalization for answer embeddings")
+                answer_embeddings -= answer_embeddings.mean(dim=0)
+                answer_embeddings /= answer_embeddings.std(dim=0)
+            else:
+                # use regular vector normalization
+                answer_embeddings = F.normalize(answer_embeddings)
+            self.answer_embeddings = answer_embeddings
 
     def forward(self, image_embeddings, question_embeddings):
         image_embeddings = self.image_transform(image_embeddings)

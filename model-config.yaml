@@ -1,10 +1,11 @@
 ###### model name ######
-model_name: turbo_lt1e3_weighted_answerembed_1hidden
+model_name: turbo_lr1e3_1536_weighted_answerembed_zn_1hidden
 
 ###### model architecture-related settings ######
 num_hidden_layers: 1
-hidden_size: 768
+hidden_size: 1536
 use_answer_embeddings: true
+use_answer_embedding_z_normalization: true
 
 ###### training-related hyperparameters ######
 batch_size: 5000
