@@ -1,6 +1,12 @@
+###### model architecture-related settings ######
+num_hidden_layers: 1
+hidden_size: 768
+use_answer_embeddings: true
+
 ###### training-related hyperparameters ######
 batch_size: 5000
 learning_rate: 1.e-2
+shuffle: true
 
 ###### loss-function parameters ######
 use_class_weights: true

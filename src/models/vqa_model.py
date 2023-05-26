@@ -4,32 +4,55 @@ import torch.nn.functional as F
 
 from transformers import BertTokenizer, BertModel
 
+from src.models.model_configuration import ModelConfiguration
+
 class VQAModel(nn.Module):
     MODEL_NAME = "lr1e2_weighted_dropout_batchnorm_answerembeddings_inputembeddings_hidden2"
+    INPUT_EMBEDDINGS_SIZE = 768
 
-    def __init__(self, answer_classes_text, hidden_size=768):
+    def __init__(self, answer_classes_text=None):
         super().__init__()
+        self.config = ModelConfiguration()
 
-        # Our model will apply a transform to each embedding before concatenating them
-        self.image_transform = nn.Linear(hidden_size, hidden_size)
-        self.question_transform = nn.Linear(hidden_size, hidden_size)
+        self.image_transform = nn.Linear(self.INPUT_EMBEDDINGS_SIZE, self.INPUT_EMBEDDINGS_SIZE)
+        self.question_transform = nn.Linear(self.INPUT_EMBEDDINGS_SIZE, self.INPUT_EMBEDDINGS_SIZE)
 
-        # Dropout layer
-        self.dropout = nn.Dropout(0.1)
+        if self.config.use_dropout:
+            self.dropout = nn.Dropout(self.config.dropout_probability)
 
-        # Batch Normalization Layer
-        self.batch_norm = nn.BatchNorm1d(hidden_size * 2)
+        if self.config.use_batch_normalization:
+            self.batch_norm = nn.BatchNorm1d(self.INPUT_EMBEDDINGS_SIZE * 2)
 
-        # Layer transforming embeddings for comparison with answer embeddings
-        self.embedding_transform = nn.Sequential(
-            nn.Linear(hidden_size * 2, hidden_size),
-            nn.ReLU(),
-            nn.Linear(hidden_size, hidden_size),
-        )
+        if self.config.num_hidden_layers > 0:
+            self.hidden_layers = self._build_hidden_layers()
 
-        # Compute and store answer embeddings
-        print("Computing answer embeddings...")
-        self.recompute_answer_embeddings(answer_classes_text)
+        # Determine the input and output sizes of the final layer (head)
+        # The input size will depend on the output size of the layer that
+        # preceeds it.
+        # The output size will depend on whether we're predicting an output
+        # class index directly, or producing an embedding to compare against
+        # answer embeddings
+        if self.config.hidden_size > 0:
+            head_input_size = self.config.hidden_size
+        else:
+            head_input_size = self.INPUT_EMBEDDINGS_SIZE * 2
+
+        if self.config.use_answer_embeddings:
+            head_output_size = self.INPUT_EMBEDDINGS_SIZE
+            self.recompute_answer_embeddings(answer_classes_text)
+        else:
+            head_output_size = len(answer_classes_text)
+
+        print("head_input_size:", head_input_size)
+        print("head_output_size:", head_output_size)
+        self.head = nn.Linear(head_input_size, head_output_size)
+
+    def _build_hidden_layers(self):
+        layers = [nn.Linear(self.INPUT_EMBEDDINGS_SIZE * 2, self.config.hidden_size), nn.ReLU()]
+        for _ in range(self.config.num_hidden_layers - 1):
+            layers.append(nn.Linear(self.config.hidden_size, self.config.hidden_size))
+            layers.append(nn.ReLU())
+        return nn.Sequential(*layers)
 
     def recompute_answer_embeddings(self, answer_classes_text):
         bert = BertModel.from_pretrained('bert-base-uncased')
@@ -37,7 +60,7 @@ class VQAModel(nn.Module):
 
         inputs = tokenizer(answer_classes_text, return_tensors="pt", padding=True, truncation=True, max_length=50)
         with torch.no_grad():
-            self.answer_embeddings = bert(**inputs).pooler_output
+            self.answer_embeddings = F.normalize(bert(**inputs).pooler_output)
 
     def forward(self, image_embeddings, question_embeddings):
         image_embeddings = self.image_transform(image_embeddings)
@@ -45,13 +68,18 @@ class VQAModel(nn.Module):
 
         embeddings = torch.cat([image_embeddings, question_embeddings], dim=1)
 
-        # Apply batch normalization and dropout to the embeddings before passing them to the embedding_transform layer
-        embeddings = self.batch_norm(embeddings)
-        embeddings = self.dropout(embeddings)
+        if self.config.use_batch_normalization:
+            embeddings = self.batch_norm(embeddings)
 
-        embeddings = self.embedding_transform(embeddings)
+        if self.config.use_dropout:
+            embeddings = self.dropout(embeddings)
 
-        # Compute similarities between embeddings and answer classes
-        output = torch.matmul(F.normalize(embeddings), F.normalize(self.answer_embeddings.T))
+        if self.config.num_hidden_layers > 0:
+            embeddings = self.hidden_layers(embeddings)
+
+        output = self.head(embeddings)
+
+        if self.config.use_answer_embeddings:
+            output = torch.matmul(F.normalize(output), self.answer_embeddings.T)
 
         return output
