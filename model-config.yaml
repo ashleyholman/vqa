@@ -1,0 +1,14 @@
+###### training-related hyperparameters ######
+batch_size: 5000
+learning_rate: 1.e-2
+
+###### loss-function parameters ######
+use_class_weights: true
+
+###### snapshot-related settings ######
+
+# Training should create a snapshot every 'x' epochs.  Performance metrics will
+# only be emitted for these epochs, because snapshots are needed for getting
+# validation metrics, hence this setting will also determine the resolution of
+# performance graphs.
+snapshot_every_epochs: 100

@@ -14,6 +14,7 @@ from src.snapshots.vqa_snapshot_manager import VQASnapshotManager
 from src.snapshots.snapshot import Snapshot
 from src.metrics.metrics_manager import MetricsManager
 from src.metrics.performance_tracker import PerformanceTracker
+from src.models.model_configuration import ModelConfiguration
 
 # source name for metrics that we emit
 METRICS_SOURCE = "train_model"
@@ -28,6 +29,7 @@ def train_model(args):
     snapshot_manager = VQASnapshotManager()
     metrics_manager = MetricsManager(METRICS_SOURCE)
     performance_tracker = PerformanceTracker()
+    config = ModelConfiguration()
 
     print(f"Torch device: {device}")
     print(f"Using {num_workers} DataLoader workers")
@@ -78,7 +80,7 @@ def train_model(args):
         model = VQAModel(dataset.answer_classes)
 
         # Create a new optimizer
-        optimizer = Adam(model.parameters(), lr=1e-2)
+        optimizer = Adam(model.parameters(), lr=config.learning_rate)
 
         # epoch's are 1-indexed for ease of understanding by the user
         start_epoch = 1
@@ -100,31 +102,35 @@ def train_model(args):
 
     # Create a DataLoader to handle batching of the dataset
     print("Loading dataset..")
-    batch_size = 5000
     if isModelParallel:
         batch_size = batch_size * torch.cuda.device_count()
-    print(f"Using batch size: {batch_size}")
-    data_loader = DataLoader(dataset, batch_size=batch_size, num_workers=num_workers, shuffle=True)
+    print(f"Using batch size: {config.batch_size}")
+    data_loader = DataLoader(dataset, batch_size=config.batch_size, num_workers=num_workers, shuffle=True)
 
-    ### Use class weighting to counteract class imbalance
-    class_counts = torch.Tensor(dataset.class_counts)
-    # if any classes have 0 count, set them to 1 to avoid dividing by 0
-    class_counts[class_counts == 0] = 1
-    # take the reciprocal of the class counts so that the most frequent class has the lowest weight
-    class_weights = 1. / class_counts
-    # normalize weights so they sum to 1
-    class_weights = class_weights / class_weights.sum() 
-    class_weights = class_weights.to(device)
+    class_weights = None
+    if config.use_class_weights:
+        print("Using class weights.")
+        ### Use class weighting to counteract class imbalance
+        class_counts = torch.Tensor(dataset.class_counts)
+        # if any classes have 0 count, set them to 1 to avoid dividing by 0
+        class_counts[class_counts == 0] = 1
+        # take the reciprocal of the class counts so that the most frequent class has the lowest weight
+        class_weights = 1. / class_counts
+        # normalize weights so they sum to 1
+        class_weights = class_weights / class_weights.sum()
+        class_weights = class_weights.to(device)
+
     loss_function = torch.nn.CrossEntropyLoss(weight=class_weights)
 
-    model.train()  # set model to training mode
+    # set model to training mode
+    model.train()
 
     print("Beginning training.")
     if (args.skip_s3_storage):
         print("WARNING: Skipping S3 storage of snapshots.  Snapshots will only be stored locally.")
 
     for epoch in range(start_epoch, num_epochs+1):
-        is_snapshot_epoch = (epoch % 200 == 0)
+        is_snapshot_epoch = (epoch % config.snapshot_every_epochs == 0)
 
         start_time = time.time()
         print(f"Epoch {epoch}/{num_epochs}")
