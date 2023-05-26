@@ -123,6 +123,37 @@ class F1Metric(Metric):
     def value(self):
         return f1_score(self.correct_answers, self.predictions, average=self.average, zero_division=1) * 100
 
+import numpy as np
+
+class GiniCoefficientMetric(Metric):
+    def __init__(self):
+        self.reset()
+
+    def reset(self):
+        self.predictions = []
+
+    def update(self, logits, labels):
+        _, preds = torch.max(logits, dim=1)
+        self.predictions.extend(preds.tolist())
+
+    def value(self):
+        return self._gini_coefficient(self.predictions)
+
+    @staticmethod
+    def _gini_coefficient(predictions):
+        # convert to numpy array for calculation
+        predictions = np.array(predictions)
+
+        # sort the predictions
+        predictions_sorted = np.sort(predictions)
+
+        # calculate the Gini coefficient
+        n = len(predictions_sorted)
+        index = np.arange(1, n + 1)
+        gini = (np.sum((2 * index - n  - 1) * predictions_sorted)) / (n * np.sum(predictions_sorted))
+
+        return gini
+
 class PerformanceTracker:
     def __init__(self):
         self.metrics = {
@@ -134,7 +165,8 @@ class PerformanceTracker:
             "recall_micro": RecallMetric("micro"),
             "recall_macro": RecallMetric("macro"),
             "f1_score_micro": F1Metric("micro"),
-            "f1_score_macro": F1Metric("macro")
+            "f1_score_macro": F1Metric("macro"),
+            "gini_coefficient": GiniCoefficientMetric()
         }
         self.reset()
 
