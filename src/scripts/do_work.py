@@ -25,7 +25,7 @@ def get_work(model_name, dataset_type):
     # At the same time, track the most recent snapshot and its epoch, so
     # we can return those too for resuming training.
     snapshots_by_epoch = {}
-    latest_snapshot_epoch = -1
+    latest_snapshot_epoch = 0
     latest_snapshot_name = None
     for snapshot_name, metadata in snapshots.items():
         epoch = metadata['epoch']
@@ -94,8 +94,8 @@ def main_loop(args):
         print(f"Validating snapshot: {snapshot_name}")
         validate_snapshot(snapshot_name, args.num_dataloader_workers, args.dataset_type)
 
-    print("No more snapshots to validate. Will resume training model for another 5 epochs.")
-    train_model(latest_snapshot_name, latest_snapshot_epoch + 5, args.num_dataloader_workers, args.dataset_type)
+    print("No more snapshots to validate. Will resume training model for another 200 epochs.")
+    train_model(latest_snapshot_name, latest_snapshot_epoch + 500, args.num_dataloader_workers, args.dataset_type)
     print("Done training.")
 
 if __name__ == '__main__':
