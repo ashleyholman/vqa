@@ -12,6 +12,7 @@ from src.models.vqa_model import VQAModel
 from src.snapshots.vqa_snapshot_manager import VQASnapshotManager
 from src.metrics.metrics_manager import MetricsManager
 from src.metrics.performance_tracker import PerformanceTracker
+from src.models.model_configuration import ModelConfiguration
 
 # source name for metrics that we emit
 METRICS_SOURCE = "test_model"
@@ -41,6 +42,7 @@ def main(args):
     snapshot_manager = VQASnapshotManager()
     metrics_manager = MetricsManager(METRICS_SOURCE)
     performance_tracker = PerformanceTracker()
+    config = ModelConfiguration()
 
     model_name = None;
 
@@ -66,17 +68,18 @@ def main(args):
     model.answer_embeddings = model.answer_embeddings.to(device)
 
     # Create a DataLoader to handle batching of the dataset
-    data_loader = DataLoader(dataset, batch_size=5000, num_workers=num_workers, shuffle=False)
+    data_loader = DataLoader(dataset, batch_size=config.batch_size, num_workers=num_workers, shuffle=config.shuffle)
+
+    # Move model to evaluation mode
+    model.eval()
+
+    print("Evaluating model...")
 
     # Wrap data_loader with tqdm to show a progress bar, unless --no-progress-bar was specified
     if not args.no_progress_bar:
         data_loader = tqdm(data_loader)
 
-    # Move model to evaluation mode
-    model.eval()
-
     # No need to track gradients for this
-    print("Evaluating model...")
     with torch.no_grad():
         for idx, batch in enumerate(data_loader, start=1):
             # Transfer data to the appropriate device
@@ -92,7 +95,7 @@ def main(args):
             loss = cross_entropy(logits, labels)
 
             # Update the performance tracker
-            performance_tracker.update_metrics(logits, labels)
+            performance_tracker.update_metrics(logits, labels, loss.item())
 
             # Print average loss every 500 batches
             if idx % 500 == 0:

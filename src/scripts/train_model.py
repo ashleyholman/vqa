@@ -107,7 +107,7 @@ def train_model(args):
     print(f"Using batch size: {config.batch_size}")
     data_loader = DataLoader(dataset, batch_size=config.batch_size, num_workers=num_workers, shuffle=True)
 
-    class_weights = None
+    loss_args = {}
     if config.use_class_weights:
         print("Using class weights.")
         ### Use class weighting to counteract class imbalance
@@ -119,8 +119,9 @@ def train_model(args):
         # normalize weights so they sum to 1
         class_weights = class_weights / class_weights.sum()
         class_weights = class_weights.to(device)
+        loss_args['weight'] = class_weights
 
-    loss_function = torch.nn.CrossEntropyLoss(weight=class_weights)
+    loss_function = torch.nn.CrossEntropyLoss(**loss_args)
 
     # set model to training mode
     model.train()
