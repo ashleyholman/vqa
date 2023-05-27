@@ -193,3 +193,83 @@ more to understand exactly why it's bad.
 I'm not ready to give up entirely on answer embeddings yet, but I think I'll go
 back to the simple classifier first to see what results I can get with my hugely
 increased ability to train for large numbers of epochs in a short time.
+
+== Fri May 26th 2023 ==
+I had a breakthrough on getting answer embeddings to work.  The answer
+embeddings model seems to be roughly as capable as the simple classifier,
+although takes longer to train.
+
+The breakthrough happened when I started wondering if perhaps the answer
+embeddings might all be clustered around a small area of the BERT embeddings
+space, since they're mostly single words and many of them nouns etc, in which
+case the "cosine similarity" scoring that we output, would not have the ability
+to strongly predict one class over the other.
+
+I discussed with ChatGPT, and it said that it's a common practice to normalise
+embeddings before doing cosine similarity, however there is some risk that we
+lose information since BERT embeddings are quite rich with semantic meaning.
+
+I also noticed that the code I was using was already doing F.normalize() on the
+answer embeddings, but GPT said this was just a vector normalization, which
+changes all of their length to 10, but does not change the angles between
+vectors, which is what cosine similarity looks at.  It recommended I look at
+z-normalization.  It also suggested I could test my hypothesis of embeddings all
+being close to one another by computing the pairwise cosine similarity between
+all the answer classes.
+
+I ended up going strait to implementing z-normalisation without doing the cosine
+similarity analysis.  The results were immediately obvious that it fixed my
+model.  I would like to return to the suggestion of checking the similarity
+scores on the raw answer embeddings, but I'll put that on my TODO backlog.
+
+The rest of my day was mostly focused on refactoring any model or
+training-related configuration/hyper-parameters into a new class,
+ModelConfiguration, that loads all settings from a YAML file.  So now to tweak
+my model architecture or training settings, I can just modify that file.  Should
+allow for more rapid experimentation on different models and hyper-params.
+
+== Sat 27th May 2023 ==
+Didn't do much today, except I have an idea in my head that I want to do a
+pretty big overhaul of how training/validation/snapshots etc work.  I want to
+introduce the concept of a "run" which will be identified by a UUID (referred to
+as "run ID") and has the following attributes:
+- A configuration set (key/value pairs that determine the model architecture and
+  hyperparameters, including the max number of epochs that the run should train
+  for).
+- Git commit hash from the code that the run will execute on
+- Timestamps of when the run started and ended.
+
+The DDB records for snapshots and performance statistics will then be associated
+with a Run ID instead of a model name.
+
+I'll make a tool to generate an index page for my graphs so that I can see all
+the different runs with a summary of key metrics, and click on them to view the
+detailed charts.  I would also like to add an option to compare two runs
+side-by-side on the same charts to make it easier to see the impact of a change.
+
+Eventually, generation of these graphs and indexes in real time can be automated
+via lambda and stored in a public S3 bucket for easy online viewing.
+
+The new approach will deprecate the train_model.py and test_model.py scripts.
+Previously I was manually invoking those to orchestrate my own runs, and
+recently add the do_work.py script that runs the two of them in an infinite
+loop.  That approach was cumbersome because the current model would train
+infinitely until I killed the script, which resulted in models trained way too
+far into overfitting, and different models having different numbers of epochs
+depending on when I killed the script, which made it hard to compare the charts
+side-by-side, and didn't offer any possibility of queueing up multiple runs.
+
+Now I will make a new script, run.py, and add a max_epochs setting in the config
+settings.  run.py will do all of the training and validation up until the max
+epochs.  Eventually, I could make a system where I push a new model
+configuration set into an SQS queue, then my EC2 autoscaling group can scale
+based on the presence of work in queue (eg. only launch an ec2 instance when
+there's new run(s) that need doing, and then shut it down after the run(s)
+finish).  run.py will also need the ability to resume a partially complete run
+from the latest snapshot, which will be necessary in cases where we suffered a
+spot interruption.  This architecture might even enable some fancier use cases
+like a distributed grid search for the optimal model
+architecture/hyperparameters.
+
+For today, I just refactor train_model.py into a new ModelTrainer class so that
+it can later be used by run.py.
