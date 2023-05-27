@@ -168,20 +168,16 @@ class PerformanceTracker:
             "f1_score_macro": F1Metric("macro"),
             "gini_coefficient": GiniCoefficientMetric()
         }
+        self.cached_metric_values = None
         self.reset()
 
     def reset(self):
         for metric in self.metrics.values():
             metric.reset()
 
-    def update_metrics(self, logits, labels, loss):
-        for metric in self.metrics:
-            if isinstance(metric, LossMetric):
-                # special case for LossMetric
-                metric.update(loss, logits.size(0))
-            else:
-                metric.update(logits, labels)
     def update_metrics(self, logits, labels, loss=None):
+        self.cached_metric_values = None
+
         for metric_name, metric in self.metrics.items():
             if metric_name == 'loss':
                 metric.update(loss, logits.size(0))
@@ -189,7 +185,13 @@ class PerformanceTracker:
                 metric.update(logits, labels)
 
     def get_metrics(self):
-        return {name: metric.value() for name, metric in self.metrics.items()}
+        # calculating the metrics is expensive on a large dataset, and this
+        # function tends to get called repeatedly after an epoch finishes, so we
+        # cache the results here
+        if self.cached_metric_values is None:
+            self.cached_metric_values = {name: metric.value() for name, metric in self.metrics.items()}
+
+        return self.cached_metric_values
 
     def print_report(self):
         print("== Performance Metrics ==")
