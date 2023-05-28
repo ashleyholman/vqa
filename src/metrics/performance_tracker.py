@@ -147,6 +147,10 @@ class GiniCoefficientMetric(Metric):
         # sort the predictions
         predictions_sorted = np.sort(predictions)
 
+        # if all predictions are the same, return 1
+        if np.unique(predictions_sorted).size == 1:
+            return 1.0
+
         # calculate the Gini coefficient
         n = len(predictions_sorted)
         index = np.arange(1, n + 1)
