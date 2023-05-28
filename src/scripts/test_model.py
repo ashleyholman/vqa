@@ -17,18 +17,6 @@ from src.models.model_configuration import ModelConfiguration
 # source name for metrics that we emit
 METRICS_SOURCE = "test_model"
 
-def top_k_correct(output, target, k):
-    """Computes the count of correct predictions in the top k outputs."""
-    with torch.no_grad():
-        batch_size = target.size(0)
-
-        _, pred = output.topk(k, 1, True, True)
-        pred = pred.t()
-        correct = pred.eq(target.view(1, -1).expand_as(pred))
-
-        correct_k = correct[:k].reshape(-1).float().sum()
-        return correct_k
-
 def main(args):
     num_workers = args.num_dataloader_workers
     dataset_type = args.dataset_type
