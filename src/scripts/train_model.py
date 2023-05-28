@@ -1,7 +1,7 @@
 import argparse
 
 from src.models.model_configuration import ModelConfiguration
-from src.train.model_trainer import ModelTrainer
+from src.util.model_trainer import ModelTrainer
 
 def train_model(args):
     config = ModelConfiguration()
