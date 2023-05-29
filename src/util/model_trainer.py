@@ -71,7 +71,7 @@ class ModelTrainer:
             class_weights = 1. / class_counts
             # normalize weights so they sum to 1
             class_weights = class_weights / class_weights.sum()
-            class_weights = class_weights.to(device)
+            class_weights = class_weights.to(self.device)
             loss_args['weight'] = class_weights
 
         return torch.nn.CrossEntropyLoss(**loss_args)

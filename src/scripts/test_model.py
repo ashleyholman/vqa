@@ -1,18 +1,13 @@
 import argparse
 import torch
 
-from tqdm import tqdm
-from torch.utils.data import DataLoader
-import os
-
-from torch.nn.functional import cross_entropy
-
 from src.data.vqa_dataset import VQADataset
 from src.models.vqa_model import VQAModel
 from src.snapshots.vqa_snapshot_manager import VQASnapshotManager
 from src.metrics.metrics_manager import MetricsManager
 from src.metrics.performance_tracker import PerformanceTracker
 from src.models.model_configuration import ModelConfiguration
+from src.util.model_tester import ModelTester
 
 # source name for metrics that we emit
 METRICS_SOURCE = "test_model"
@@ -52,43 +47,16 @@ def main(args):
         print("Using untrained model")
 
     model.to(device)
+
     if config.use_answer_embeddings:
     # FIXME: Handle this in snapshot manager or VQADataset class
       model.answer_embeddings = model.answer_embeddings.to(device)
 
-    # Create a DataLoader to handle batching of the dataset
-    data_loader = DataLoader(dataset, batch_size=config.batch_size, num_workers=num_workers, shuffle=config.shuffle)
-
-    # Move model to evaluation mode
-    model.eval()
+    print("Initialising ModleTester..")
+    model_tester = ModelTester(config, dataset, num_workers)
 
     print("Evaluating model...")
-
-    # Wrap data_loader with tqdm to show a progress bar, unless --no-progress-bar was specified
-    if not args.no_progress_bar:
-        data_loader = tqdm(data_loader)
-
-    # No need to track gradients for this
-    with torch.no_grad():
-        for idx, batch in enumerate(data_loader, start=1):
-            # Transfer data to the appropriate device
-            question_embeddings = batch["question_embedding"].to(device)
-            image_embeddings = batch["image_embedding"].to(device)
-            labels = batch["label"].to(device)
-
-            # Run the model and get the predictions
-            logits = model(image_embeddings, question_embeddings)
-            _, preds = torch.max(logits, dim=1)
-
-            # Calculate the loss
-            loss = cross_entropy(logits, labels)
-
-            # Update the performance tracker
-            performance_tracker.update_metrics(logits, labels, loss.item())
-
-            # Print average loss every 500 batches
-            if idx % 500 == 0:
-                print(f"\nBatch {idx}, Average Loss: {performance_tracker.get_metrics()['loss']:.4f}")
+    model_tester.test(model, performance_tracker, device, args.no_progress_bar)
 
     # Print performance report
     performance_tracker.print_report()
