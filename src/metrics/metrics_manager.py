@@ -37,6 +37,7 @@ class MetricsManager:
                 continue
             metrics_item[metric_name] = Decimal(f"{metric_value:.10f}")
 
+        print(f"Storing metrics record with PK={pk}, SK={sk}")
         self.ddb_helper.put_item(pk, sk, metrics_item)
 
     def get_metrics(self, source, model_name, dataset_type):

@@ -83,11 +83,11 @@ def train_model(args):
         print(f"Epoch {epoch}/{args.num_epochs}")
 
         is_snapshot_epoch = (epoch % config.snapshot_every_epochs == 0)
-        is_validation_epoch = True
+        is_metrics_epoch = (epoch % config.metrics_every_epochs == 0)
 
         start_time = time.time()
 
-        if is_validation_epoch:
+        if is_metrics_epoch:
             performance_tracker.reset()
             model_trainer.train_one_epoch(performance_tracker)
         else:
@@ -97,7 +97,7 @@ def train_model(args):
         elapsed_time = time.time() - start_time
         print(f"Epoch {epoch} completed at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}, took {elapsed_time/60:.2f} minutes.")
 
-        if is_validation_epoch:
+        if is_metrics_epoch:
             performance_tracker.print_report()
             metrics_manager.store_performance_metrics(config.model_name, dataset_type, epoch, performance_tracker.get_metrics())
 
