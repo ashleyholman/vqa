@@ -1,9 +1,13 @@
 class Snapshot:
-    def __init__(self, model, dataset, optimizer, metadata):
+    def __init__(self, name, model, dataset, optimizer, metadata):
+        self.name = name
         self.model = model
         self.dataset = dataset
         self.optimizer = optimizer
         self.metadata = metadata
+
+    def get_name(self):
+        return self.name
 
     def get_model(self):
         return self.model

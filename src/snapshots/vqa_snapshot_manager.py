@@ -68,7 +68,7 @@ class VQASnapshotManager:
         if optimizer_state_dict:
             optimizer.load_state_dict(optimizer_state_dict)
 
-        return Snapshot(model, dataset, optimizer, metadata)
+        return Snapshot(snapshot_name, model, dataset, optimizer, metadata)
 
     def save_snapshot(self, snapshot_name, model, optimizer, dataset, epoch, loss, lightweight=False, skipS3Storage=False):
         # ensure snapshot dir exists
