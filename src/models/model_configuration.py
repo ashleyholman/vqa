@@ -1,5 +1,6 @@
 import os
 import yaml
+import json
 
 class ModelConfiguration:
     """Provides configuration related to model architecture and training hyperparameters.
@@ -15,13 +16,17 @@ class ModelConfiguration:
 
     def __init__(self):
         config_file = os.path.join(os.path.dirname(__file__), '../../model-config.yaml')
-        self.config = self.load_config(config_file)
-
-    def load_config(self, config_file):
         with open(config_file, 'r') as f:
-            config = yaml.safe_load(f)
-        return config
+            self.config = yaml.safe_load(f)
 
     def __getattr__(self, attr):
         return self.config.get(attr, None)
 
+    def __setattr__(self, attr, value):
+        if attr == "config":
+            super().__setattr__(attr, value)
+        else:
+            self.config[attr] = value
+
+    def to_json_string(self):
+        return json.dumps(self.config, sort_keys=True)
