@@ -70,7 +70,7 @@ class VQASnapshotManager:
 
         return Snapshot(snapshot_name, model, dataset, optimizer, metadata)
 
-    def save_snapshot(self, snapshot_name, model, optimizer, dataset, epoch, loss, lightweight=False, skipS3Storage=False):
+    def save_snapshot(self, snapshot_name, model, optimizer, dataset, epoch, lightweight=False, skipS3Storage=False):
         # ensure snapshot dir exists
         os.makedirs(os.path.join(self.LOCAL_CACHE_DIR, snapshot_name), exist_ok=True)
 
@@ -92,7 +92,6 @@ class VQASnapshotManager:
             'lightweight': lightweight,
             'model_version': self.config.model_name,
             'epoch': epoch,
-            'loss': loss,
             'timestamp': datetime.now().strftime("%Y%m%d_%H%M%S"),
         }
 
