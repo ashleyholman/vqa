@@ -8,8 +8,13 @@ class MetricsManager:
         self.ddb_helper = DynamoDBHelper()
         self.source = source
 
-    def store_performance_metrics(self, model_name, dataset_type, epoch, metrics: dict, overwriteExisting=True):
-        pk = f"{self.source}:{model_name}:{dataset_type}"
+    def store_performance_metrics(self, model_name, dataset_type, epoch, metrics: dict, overwriteExisting=True, run_id=None):
+        if run_id:
+            # different PK format for run-based metrics.
+            pk = f"performance-metrics:{run_id}:{dataset_type}"
+        else:
+            pk = f"{self.source}:{model_name}:{dataset_type}"
+
         sk = str(epoch)
 
         if not overwriteExisting:
