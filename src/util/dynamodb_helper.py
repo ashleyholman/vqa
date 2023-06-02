@@ -33,6 +33,29 @@ class DynamoDBHelper:
         else:
             return response.get('Item')
 
+    def update_item(self, pk, sk, values: dict):
+        try:
+            expression = 'SET '
+            expression_values = {}
+            for key, value in values.items():
+                expression += f"{key} = :{key}, "
+                expression_values[f":{key}"] = value
+            expression = expression[:-2]
+
+            response = self.table.update_item(
+                Key={
+                    'PK': pk,
+                    'SK': sk
+                },
+                UpdateExpression=expression,
+                ExpressionAttributeValues=expression_values,
+                ReturnValues='UPDATED_NEW'
+            )
+        except ClientError as e:
+            print(e.response['Error']['Message'])
+        else:
+            return response.get('Attributes')
+
     def query(self, pk):
         try:
             response = self.table.query(
