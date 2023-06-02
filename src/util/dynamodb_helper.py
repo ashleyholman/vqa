@@ -56,6 +56,17 @@ class DynamoDBHelper:
         else:
             return response.get('Attributes')
 
+    def delete_item(self, pk, sk):
+        try:
+            self.table.delete_item(
+                Key={
+                    'PK': pk,
+                    'SK': sk
+                }
+            )
+        except ClientError as e:
+            print(e.response['Error']['Message'])
+
     def query(self, pk):
         try:
             response = self.table.query(

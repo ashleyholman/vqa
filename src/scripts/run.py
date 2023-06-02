@@ -101,10 +101,44 @@ class Run:
         # Return the first 20 characters of the combined hash.  This is sufficiently unique for our use case.
         return hashlib.sha256(combined_hash_input.encode()).hexdigest()[:20]
 
-    def _get_or_create_run(self):
-        '''Check DDB for an unfinished run for this state hash
+    def _create_run_record(self):
+        '''Create the initial "run" record in DDB for this run.'''
+        created_at_timestamp = datetime.now().isoformat()
+        pk = f"run:{self.run_id}"
+        sk = '0'
+        # GSI PK/SK will allow us to query runs ordered by timestamp.
+        gsi_pk = 'run'
+        gsi_sk = f"{created_at_timestamp}:{self.run_id}"
+        column_values = {
+            'run_id': self.run_id,
+            'training_dataset_type': self.training_dataset_type,
+            'validation_dataset_type': self.validation_dataset_type,
+            'max_epochs': self.config.max_epochs,
+            'state_hash': self.state_hash,
+            'config': self.config.to_json_string(),
+            'started_at': created_at_timestamp,
+            'run_status': 'IN_PROGRESS',
+            'GSI_PK': gsi_pk,
+            'GSI_SK': gsi_sk
+        }
+        self.ddb_helper.put_item(pk, sk, column_values)
 
-        Returns a tuple of (run_id, starting_epoch, snapshot_name) if there is an unfinished run,
+    def _create_unfinished_run_record(self):
+        '''Create the initial "unfinished-run" record in DDB for this run.'''
+        pk = f"unfinished-run:{self.state_hash}"
+        sk = self.run_id
+        column_values = {
+            'run_id': self.run_id,
+            'state_hash': self.state_hash,
+            'trained_until_epoch': 0,
+            'snapshot_name': None,
+        }
+        self.ddb_helper.put_item(pk, sk, column_values)
+
+    def _get_or_create_run(self):
+        '''
+        Sets run_id, start_epoch, and snapshot_name, either by resuming an
+        existing run, or by creating a new run.
         '''
         pk = f"unfinished-run:{self.state_hash}"
         unfinished_runs = self.ddb_helper.query(pk)
@@ -125,20 +159,27 @@ class Run:
             self.start_epoch = 1
             self.snapshot_name = None
 
-            # insert an "unfinished-run" DDB record for this new run
-            column_values = {
-                'run_id': self.run_id,
-                'training_dataset_type': self.training_dataset_type,
-                'validation_dataset_type': self.validation_dataset_type,
-                'max_epochs': self.config.max_epochs,
-                'state_hash': self.state_hash,
-                'trained_until_epoch': 0,
-                'snapshot_name': None,
-                'config': self.config.to_json_string(),
-                'started_at': datetime.now().isoformat()
-            }
-            print("INSERTING DDB")
-            self.ddb_helper.put_item(pk, self.run_id, column_values)
+            # Insert DDB records.  The "run" record is the permanent record for
+            # this run, and the "unfinished-run" record will only temporarily
+            # exist while the run is in progress, to allow for resuming based on
+            # the state hash.
+            self._create_run_record()
+            self._create_unfinished_run_record()
+
+    def _mark_run_finished(self):
+        # Update the "run_status" to "FINISHED" for this run.
+        pk = f"run:{self.run_id}"
+        sk = '0'
+        column_values = {
+            'run_status': "FINISHED",
+            'finished_at': datetime.now().isoformat()
+        }
+        self.ddb_helper.update_item(pk, sk, column_values)
+
+        # Delete the "unfinished-run:<statehash>" record in DDB.
+        pk = f"unfinished-run:{self.state_hash}"
+        sk = self.run_id
+        self.ddb_helper.delete_item(pk, sk)
 
     def run(self):
         '''Run the training and validation process.'''
@@ -254,6 +295,7 @@ class Run:
             # store metrics
             validation_metrics_manager.store_performance_metrics(self.config.model_name, self.validation_dataset_type, epoch, performance_tracker.get_metrics(), True, self.run_id)
 
+        self._mark_run_finished()
         print("Run complete.")
 
 if __name__ == "__main__":
