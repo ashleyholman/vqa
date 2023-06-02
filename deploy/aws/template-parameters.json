@@ -5,6 +5,6 @@
   },
   {
     "ParameterKey": "UseGPUSpotInstances",
-    "ParameterValue": "false"
+    "ParameterValue": "true"
   }
 ]
