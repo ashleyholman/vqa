@@ -12,13 +12,13 @@ Parameters:
       EOF
   UseCPUSpotInstances:
     Type: String
-    Default: false
+    Default: true
     AllowedValues: 
       - 'true'
       - 'false'
   UseGPUSpotInstances:
     Type: String
-    Default: false
+    Default: true
     AllowedValues: 
       - 'true'
       - 'false'
@@ -45,6 +45,10 @@ Resources:
           AttributeType: S
         - AttributeName: SK
           AttributeType: S
+        - AttributeName: GSI_PK
+          AttributeType: S
+        - AttributeName: GSI_SK
+          AttributeType: S
       KeySchema:
         - AttributeName: PK
           KeyType: HASH
@@ -53,6 +57,18 @@ Resources:
       ProvisionedThroughput:
         ReadCapacityUnits: 5
         WriteCapacityUnits: 5
+      GlobalSecondaryIndexes:
+        - IndexName: GSI
+          KeySchema:
+            - AttributeName: GSI_PK
+              KeyType: HASH
+            - AttributeName: GSI_SK
+              KeyType: RANGE
+          ProvisionedThroughput:
+            ReadCapacityUnits: 5
+            WriteCapacityUnits: 5
+          Projection:
+            ProjectionType: KEYS_ONLY
 
   MyInstanceProfile:
     Type: AWS::IAM::InstanceProfile
@@ -118,8 +134,6 @@ Resources:
         KeyName: vqa
         SecurityGroupIds:
         - !GetAtt VQATrainingInferenceSecurityGroup.GroupId
-        InstanceMarketOptions:
-          MarketType: spot
         InstanceMarketOptions: 
           Fn::If:
             - UseCPUSpotInstancesCondition
@@ -130,7 +144,15 @@ Resources:
             Ebs:
               VolumeSize: 150
         UserData:
-          Fn::Base64: !Ref TrainingInferenceUserDataScript
+          Fn::Base64: |
+            #!/bin/bash
+            yum install -y expect
+            sudo -u ec2-user bash <<EOF
+            cd /home/ec2-user
+            git clone https://github.com/ashleyholman/vqa.git
+            cd vqa
+            ./provision.sh
+            EOF
 
   VQACPUOnlyAutoscalingGroup:
     Type: AWS::AutoScaling::AutoScalingGroup
@@ -166,7 +188,15 @@ Resources:
             Ebs:
               VolumeSize: 150
         UserData:
-          Fn::Base64: !Ref TrainingInferenceUserDataScript
+          Fn::Base64: |
+            #!/bin/bash
+            yum install -y expect
+            sudo -u ec2-user bash <<EOF
+            cd /home/ec2-user
+            git clone https://github.com/ashleyholman/vqa.git
+            cd vqa
+            ./provision.sh
+            EOF
 
   VQAGPUAutoscalingGroup:
     Type: AWS::AutoScaling::AutoScalingGroup
