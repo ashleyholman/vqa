@@ -108,7 +108,7 @@ class Run:
         sk = '0'
         # GSI PK/SK will allow us to query runs ordered by timestamp.
         gsi_pk = 'run'
-        gsi_sk = f"{created_at_timestamp}:{self.run_id}"
+        gsi_sk = f"{created_at_timestamp}#{self.run_id}"
         column_values = {
             'run_id': self.run_id,
             'training_dataset_type': self.training_dataset_type,
