@@ -1,10 +1,10 @@
 ###### model name ######
-model_name: 'v1_weighted'
+model_name: 'v1_weighted_answerembed'
 
 ###### model architecture-related settings ######
 num_hidden_layers: 0
 hidden_size: 1536
-use_answer_embeddings: false
+use_answer_embeddings: true
 use_answer_embedding_z_normalization: true
 use_dropout: false
 use_batch_normalization: false
