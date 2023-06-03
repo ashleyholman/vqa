@@ -10,14 +10,22 @@ from urllib.request import pathname2url
 from src.metrics.metrics_manager import MetricsManager
 from src.models.model_configuration import ModelConfiguration
 
-def fetch_metrics(model_name):
+def fetch_metrics(args):
     metrics_manager = MetricsManager('graph-performance')
 
-    # fetch the metrics from the training and validation datasets
-    datasets = {
-        'training': metrics_manager.get_metrics('train_model', model_name, 'train'),
-        'validation': metrics_manager.get_metrics('test_model', model_name, 'validation')
-    }
+    if args.run_id:
+        if args.mini_dataset:
+            datasets = {'mini': metrics_manager.get_metrics_by_run_id(args.run_id, 'mini')}
+        else:
+            datasets = {
+                'training': metrics_manager.get_metrics_by_run_id(args.run_id, 'train'),
+                'validation': metrics_manager.get_metrics_by_run_id(args.run_id, 'validation')
+            }
+    else:
+        datasets = {
+            'training': metrics_manager.get_metrics('train_model', args.model_name, 'train'),
+            'validation': metrics_manager.get_metrics('test_model', args.model_name, 'validation')
+        }
 
     data = {}
 
@@ -32,11 +40,14 @@ def fetch_metrics(model_name):
 
     return data
 
-def plot_graphs(data, model_name):
+def plot_graphs(data, args):
     plt.style.use('dark_background')
     epochs = sorted(data.keys())
     metrics = set([k.split('_', 1)[1] for k in data[epochs[0]].keys() if '_' in k])
-    output_dir = f"graphs/{model_name}"
+
+    output_dir_suffix = "_mini" if args.mini_dataset else ""
+    output_name = f"run_{args.run_id}" if args.run_id else args.model_name
+    output_dir = f"graphs/{output_name}{output_dir_suffix}"
 
     # Create output directory if it doesn't exist
     os.makedirs(output_dir, exist_ok=True)
@@ -47,12 +58,15 @@ def plot_graphs(data, model_name):
                     ('recall_macro', 'recall_micro'), 
                     ('f1_score_macro', 'f1_score_micro')]
 
+    # determine the dataset prefixes for plotting based on args
+    dataset_prefixes = ['mini'] if args.mini_dataset else ['training', 'validation']
+
     # Plot 'loss' first as a larger graph
     if 'loss' in metrics:
         plt.figure(figsize=(10, 5))
         ax = plt.gca()
-        ax.plot(epochs, [data[epoch].get(f'training_loss') for epoch in epochs], linestyle='-', marker='o', color='yellow', label='training')
-        ax.plot(epochs, [data[epoch].get(f'validation_loss') for epoch in epochs], linestyle='-', marker='o', color='cyan', label='validation')
+        for prefix in dataset_prefixes:
+            ax.plot(epochs, [data[epoch].get(f'{prefix}_loss') for epoch in epochs], linestyle='-', marker='o', label=prefix)
         ax.set_xlabel('epochs')
         ax.set_ylabel('loss')
         ax.set_title('loss')
@@ -69,8 +83,8 @@ def plot_graphs(data, model_name):
         if metric != 'loss':
             plt.figure(figsize=(5, 3))
             ax = plt.gca()
-            ax.plot(epochs, [data[epoch].get(f'training_{metric}') for epoch in epochs], linestyle='-', marker='o', color='yellow', label='training')
-            ax.plot(epochs, [data[epoch].get(f'validation_{metric}') for epoch in epochs], linestyle='-', marker='o', color='cyan', label='validation')
+            for prefix in dataset_prefixes:
+                ax.plot(epochs, [data[epoch].get(f'{prefix}_{metric}') for epoch in epochs], linestyle='-', marker='o', label=prefix)
             ax.set_xlabel('Epochs')
             ax.set_ylabel(metric)
             ax.set_title(metric)
@@ -125,26 +139,27 @@ def main():
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument('--model-name', help='Name of the model to report on')
     group.add_argument('--latest', action='store_true', help='Report on the latest model')
+    group.add_argument('--run-id', help='ID of the run to report on')
 
     parser.add_argument('--csv', action='store_true', help='Output data as CSV')
+    parser.add_argument('--mini-dataset', action='store_true', help='Output data for the mini dataset')
+
     args = parser.parse_args()
 
     if args.latest:
         # use the latest model
-        model_name = ModelConfiguration().model_name
-    else:
-        model_name = args.model_name
+        args.model_name = ModelConfiguration().model_name
 
-    data = fetch_metrics(model_name)
+    data = fetch_metrics(args)
 
     if not data:
-        print(f"No metrics found for model: {model_name}")
+        print(f"No metrics found for model: {args.model_name if args.model_name else args.run_id}")
         return
 
     if args.csv:
         print_csv(data)
     else:
-        plot_graphs(data, model_name)
+        plot_graphs(data, args)
 
 if __name__ == '__main__':
     main()
