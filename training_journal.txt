@@ -273,3 +273,20 @@ architecture/hyperparameters.
 
 For today, I just refactor train_model.py into a new ModelTrainer class so that
 it can later be used by run.py.
+
+== Sat 3rd Jun ==
+Got my run.py system going.  Now can more rapidly experiment.
+
+Still need to make graph_performance.py produce an index page showing recent
+runs ordered by time, with their model configuration attributes.
+
+Also would be helpful to have a mechanism where I can submit a batch of runs I'd
+like to execute, and have the instance automatically execute them in sequence.
+That way I could queue up a bunch of different experiments and let them go
+overnight.
+
+For now, have done a few runs on older model architectures up to 50 epoch and
+found they didn't actually top out.  They keep learning and improving on the
+validation set.  I'll have to run some longer runs up to 200 epochs next.
+Interested to see whether the answer embeddings approach can eventually reach
+and exceed the performance of the simple classifier.
