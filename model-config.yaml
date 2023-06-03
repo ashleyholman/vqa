@@ -1,25 +1,31 @@
 ###### model name ######
-model_name: turbo_lr1e3_1536_weighted_answerembed_zn_1hidden
+model_name: 'v1'
 
 ###### model architecture-related settings ######
-num_hidden_layers: 1
+num_hidden_layers: 0
 hidden_size: 1536
-use_answer_embeddings: true
+use_answer_embeddings: false
 use_answer_embedding_z_normalization: true
 
 ###### training-related hyperparameters ######
 batch_size: 5000
-learning_rate: 1.e-3
+learning_rate: 1.e-4
 shuffle: true
 
 ###### loss-function parameters ######
-use_class_weights: true
+use_class_weights: false
 
-###### snapshot-related settings ######
+###### epoch-related settings ######
 
-# Training should create a snapshot every 'x' epochs.  Performance metrics will
-# only be emitted for these epochs, because snapshots are needed for getting
-# validation metrics, hence this setting will also determine the resolution of
-# performance graphs.
-#snapshot_every_epochs: 100
+# max_epochs: Training will cut off here if it hasn't already cut-off from another condition.
+max_epochs: 50
+
+# snapshot_every_epochs: How frequently to take a snapshot.  This will be the
+# restore point if our run is interrupted, for example by spot instance eviction.
 snapshot_every_epochs: 10
+
+# metrics_every_epochs: How frequently to calculate performance metrics for both
+# the training and validation set.  This will determine the resolution of
+# graphs.  Tracking performance adds an overhead on training and requires doing
+# an inference run over the validation set.
+metrics_every_epochs: 1
