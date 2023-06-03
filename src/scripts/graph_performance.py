@@ -58,15 +58,15 @@ def plot_graphs(data, args):
                     ('recall_macro', 'recall_micro'), 
                     ('f1_score_macro', 'f1_score_micro')]
 
-    # determine the dataset prefixes for plotting based on args
-    dataset_prefixes = ['mini'] if args.mini_dataset else ['training', 'validation']
+    # Determine the datasets to plot metrics for, and their corresponding colours
+    dataset_prefixes = {'mini': 'pink'} if args.mini_dataset else {'training': 'yellow', 'validation': 'cyan'}
 
     # Plot 'loss' first as a larger graph
     if 'loss' in metrics:
         plt.figure(figsize=(10, 5))
         ax = plt.gca()
-        for prefix in dataset_prefixes:
-            ax.plot(epochs, [data[epoch].get(f'{prefix}_loss') for epoch in epochs], linestyle='-', marker='o', label=prefix)
+        for prefix, color in dataset_prefixes.items():
+            ax.plot(epochs, [data[epoch].get(f'{prefix}_loss') for epoch in epochs], linestyle='-', marker='o', color=color, label=prefix)
         ax.set_xlabel('epochs')
         ax.set_ylabel('loss')
         ax.set_title('loss')
@@ -83,8 +83,8 @@ def plot_graphs(data, args):
         if metric != 'loss':
             plt.figure(figsize=(5, 3))
             ax = plt.gca()
-            for prefix in dataset_prefixes:
-                ax.plot(epochs, [data[epoch].get(f'{prefix}_{metric}') for epoch in epochs], linestyle='-', marker='o', label=prefix)
+            for prefix, color in dataset_prefixes.items():
+                ax.plot(epochs, [data[epoch].get(f'{prefix}_{metric}') for epoch in epochs], linestyle='-', marker='o', color=color, label=prefix)
             ax.set_xlabel('Epochs')
             ax.set_ylabel(metric)
             ax.set_title(metric)
