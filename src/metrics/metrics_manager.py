@@ -49,6 +49,10 @@ class MetricsManager:
         pk = f"{source}:{model_name}:{dataset_type}"
         return self._get_metrics(pk)
 
+    def get_metrics_by_run_id(self, run_id, dataset_type):
+        pk = f"performance-metrics:{run_id}:{dataset_type}"
+        return self._get_metrics(pk)
+
     def _get_metrics(self, pk):
         metrics = []
         items = self.ddb_helper.query(pk)
