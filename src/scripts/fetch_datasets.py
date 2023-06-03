@@ -112,6 +112,7 @@ for url in URLS:
     else:
         print(f"{filename} already exists, skipping download.")
         
-    # Extract the zip file
-    extract_zip(filename, data_dir)
-
+    # Check the file extension and extract the zip file if it is a zip
+    _, file_extension = os.path.splitext(filename)
+    if file_extension == '.zip':
+        extract_zip(filename, data_dir)
