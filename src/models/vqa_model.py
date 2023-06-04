@@ -48,9 +48,13 @@ class VQAModel(nn.Module):
 
     def _build_hidden_layers(self):
         layers = [nn.Linear(self.INPUT_EMBEDDINGS_SIZE * 2, self.config.hidden_size), nn.ReLU()]
+        if self.config.use_dropout:
+            layers.append(self.dropout)
         for _ in range(self.config.num_hidden_layers - 1):
             layers.append(nn.Linear(self.config.hidden_size, self.config.hidden_size))
             layers.append(nn.ReLU())
+            if self.config.use_dropout:
+                layers.append(self.dropout)
         return nn.Sequential(*layers)
 
     def recompute_answer_embeddings(self, answer_classes_text):
