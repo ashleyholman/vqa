@@ -1,5 +1,5 @@
 ###### model name ######
-model_name: 'v1_weighted_answerembed_2hidden_dropout_batchnorm'
+model_name: 'v1_unweighted_answerembed_2hidden_dropout_batchnorm'
 
 ###### model architecture-related settings ######
 num_hidden_layers: 2
@@ -17,7 +17,7 @@ learning_rate: 1.e-4
 shuffle: true
 
 ###### loss-function parameters ######
-use_class_weights: true
+use_class_weights: false
 
 ###### epoch-related settings ######
 
