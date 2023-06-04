@@ -134,7 +134,7 @@ class GraphGenerator():
         data = self.__fetch_metrics(run_id, for_mini_dataset)
 
         if not data:
-            print(f"No metrics found for model: {run_id}")
+            print(f"No metrics found for run: {run_id}")
             return
 
         if format == 'csv':
