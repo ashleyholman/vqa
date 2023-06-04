@@ -6,6 +6,7 @@ import webbrowser
 from matplotlib.ticker import MaxNLocator
 from urllib.parse import urljoin
 from urllib.request import pathname2url
+from src.metrics.graph_generator import GraphGenerator
 
 from src.metrics.metrics_manager import MetricsManager
 from src.models.model_configuration import ModelConfiguration
@@ -137,8 +138,7 @@ def print_csv(data):
 def main():
     parser = argparse.ArgumentParser(description='Fetch data from DynamoDB and plot the graph.')
     group = parser.add_mutually_exclusive_group(required=True)
-    group.add_argument('--model-name', help='Name of the model to report on')
-    group.add_argument('--latest', action='store_true', help='Report on the latest model')
+    group.add_argument('--latest', action='store_true', help='Report on the latest run')
     group.add_argument('--run-id', help='ID of the run to report on')
 
     parser.add_argument('--csv', action='store_true', help='Output data as CSV')
@@ -146,20 +146,18 @@ def main():
 
     args = parser.parse_args()
 
-    if args.latest:
-        # use the latest model
-        args.model_name = ModelConfiguration().model_name
+    #if args.latest:
+        # obtain the latest run ID
+        # TODO: implement
 
-    data = fetch_metrics(args)
-
-    if not data:
-        print(f"No metrics found for model: {args.model_name if args.model_name else args.run_id}")
-        return
+    graph_generator = GraphGenerator()
 
     if args.csv:
-        print_csv(data)
+        format = 'csv'
     else:
-        plot_graphs(data, args)
+        format = 'html'
+    
+    graph_generator.generate_graphs_by_run_id(args.run_id, format, args.mini_dataset)
 
 if __name__ == '__main__':
     main()
