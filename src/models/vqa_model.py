@@ -48,11 +48,19 @@ class VQAModel(nn.Module):
         self.head = nn.Linear(head_input_size, head_output_size)
 
     def _build_hidden_layers(self):
-        layers = [nn.Linear(self.INPUT_EMBEDDINGS_SIZE * 2, self.config.hidden_size), nn.ReLU()]
+        # Add first hidden layer (input size is different, since it takes the embeddings as input)
+        layers = [nn.Linear(self.INPUT_EMBEDDINGS_SIZE * 2, self.config.hidden_size)]
+        if self.config.use_batch_normalization:
+            layers.append(nn.BatchNorm1d(self.config.hidden_size))
+        layers.append(nn.ReLU())
         if self.config.use_dropout:
             layers.append(self.dropout_hidden)
+
+        # Add any additional hidden layers.  Their input size is self.config.hidden_size.
         for _ in range(self.config.num_hidden_layers - 1):
             layers.append(nn.Linear(self.config.hidden_size, self.config.hidden_size))
+            if self.config.use_batch_normalization:
+                layers.append(nn.BatchNorm1d(self.config.hidden_size))
             layers.append(nn.ReLU())
             if self.config.use_dropout:
                 layers.append(self.dropout_hidden)
