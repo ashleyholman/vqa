@@ -77,6 +77,7 @@ class ModelTrainer:
         return torch.nn.CrossEntropyLoss(**loss_args)
 
     def train_one_epoch(self, performance_tracker=None):
+        self.model.train()
         for idx, batch in enumerate(self.dataloader, start=1):
             # Transfer data to the appropriate device
             question_embeddings = batch["question_embedding"].to(self.device)
