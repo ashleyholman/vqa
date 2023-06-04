@@ -1,8 +1,8 @@
 ###### model name ######
-model_name: 'v1_weighted_answerembed'
+model_name: 'v1_weighted_answerembed_1hidden'
 
 ###### model architecture-related settings ######
-num_hidden_layers: 0
+num_hidden_layers: 1
 hidden_size: 1536
 use_answer_embeddings: true
 use_answer_embedding_z_normalization: true
@@ -20,11 +20,11 @@ use_class_weights: true
 ###### epoch-related settings ######
 
 # max_epochs: Training will cut off here if it hasn't already cut-off from another condition.
-max_epochs: 50
+max_epochs: 200
 
 # snapshot_every_epochs: How frequently to take a snapshot.  This will be the
 # restore point if our run is interrupted, for example by spot instance eviction.
-snapshot_every_epochs: 10
+snapshot_every_epochs: 50
 
 # metrics_every_epochs: How frequently to calculate performance metrics for both
 # the training and validation set.  This will determine the resolution of
