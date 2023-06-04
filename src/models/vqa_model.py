@@ -17,7 +17,8 @@ class VQAModel(nn.Module):
         self.question_transform = nn.Linear(self.INPUT_EMBEDDINGS_SIZE, self.INPUT_EMBEDDINGS_SIZE)
 
         if self.config.use_dropout:
-            self.dropout = nn.Dropout(self.config.dropout_probability)
+            self.dropout_input = nn.Dropout(self.config.dropout_input_probability)
+            self.dropout_hidden = nn.Dropout(self.config.dropout_hidden_probability)
 
         if self.config.use_batch_normalization:
             self.batch_norm = nn.BatchNorm1d(self.INPUT_EMBEDDINGS_SIZE * 2)
@@ -49,12 +50,12 @@ class VQAModel(nn.Module):
     def _build_hidden_layers(self):
         layers = [nn.Linear(self.INPUT_EMBEDDINGS_SIZE * 2, self.config.hidden_size), nn.ReLU()]
         if self.config.use_dropout:
-            layers.append(self.dropout)
+            layers.append(self.dropout_hidden)
         for _ in range(self.config.num_hidden_layers - 1):
             layers.append(nn.Linear(self.config.hidden_size, self.config.hidden_size))
             layers.append(nn.ReLU())
             if self.config.use_dropout:
-                layers.append(self.dropout)
+                layers.append(self.dropout_hidden)
         return nn.Sequential(*layers)
 
     def recompute_answer_embeddings(self, answer_classes_text):
@@ -83,7 +84,7 @@ class VQAModel(nn.Module):
             embeddings = self.batch_norm(embeddings)
 
         if self.config.use_dropout:
-            embeddings = self.dropout(embeddings)
+            embeddings = self.dropout_input(embeddings)
 
         if self.config.num_hidden_layers > 0:
             embeddings = self.hidden_layers(embeddings)

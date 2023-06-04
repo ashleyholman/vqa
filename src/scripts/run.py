@@ -241,7 +241,11 @@ class Run:
             # epoch's are 1-indexed for ease of understanding by the user
             start_epoch = 1
 
+        print("Model architecture: ")
+        print(self.model)
+
         self.model.to(self.device)
+        
         if self.config.use_answer_embeddings:
             # FIXME: Handle this in snapshot manager or VQADataset class
             self.model.answer_embeddings = self.model.answer_embeddings.to(self.device)
