@@ -1,8 +1,8 @@
 ###### model name ######
-model_name: 'v1_unweighted_answerembed_2hidden_dropout_batchnorm'
+model_name: 'v1_unweighted_answerembed_4hidden_dropout_batchnorm'
 
 ###### model architecture-related settings ######
-num_hidden_layers: 2
+num_hidden_layers: 4
 hidden_size: 1536
 use_answer_embeddings: true
 use_answer_embedding_z_normalization: true
@@ -13,7 +13,7 @@ use_batch_normalization: true
 
 ###### training-related hyperparameters ######
 batch_size: 5000
-learning_rate: 1.e-4
+learning_rate: 1.e-5
 shuffle: true
 
 ###### loss-function parameters ######
