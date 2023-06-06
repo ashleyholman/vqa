@@ -21,6 +21,7 @@ from src.snapshots.vqa_snapshot_manager import VQASnapshotManager
 from src.util.dynamodb_helper import DynamoDBHelper
 from src.util.model_tester import ModelTester
 from src.util.model_trainer import ModelTrainer
+from src.util.run_manager import RunManager
 
 TRAINING_METRICS_SOURCE = "train_model"
 VALIDATION_METRICS_SOURCE = "test_model"
@@ -31,6 +32,7 @@ class Run:
         self.snapshot_manager = VQASnapshotManager()
         self.ddb_helper = DynamoDBHelper()
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.run_manager = RunManager()
 
         self.skip_s3_storage = args.skip_s3_storage
         self.no_progress_bar = args.no_progress_bar
@@ -75,7 +77,7 @@ class Run:
             'snapshot_name': snapshot_name,
             'updated_at': datetime.now().isoformat()
         }
-        self.ddb_helper.update_item(f"unfinished-run:{self.state_hash}", self.run_id, column_values)
+        self.run_manager.update_run(self.run_id, column_values)
 
     def _get_state_hash(self):
         '''Get a hash of the current state of the code and config.
@@ -101,85 +103,41 @@ class Run:
         # Return the first 20 characters of the combined hash.  This is sufficiently unique for our use case.
         return hashlib.sha256(combined_hash_input.encode()).hexdigest()[:20]
 
-    def _create_run_record(self):
-        '''Create the initial "run" record in DDB for this run.'''
-        created_at_timestamp = datetime.now().isoformat()
-        pk = f"run:{self.run_id}"
-        sk = '0'
-        # GSI PK/SK will allow us to query runs ordered by timestamp.
-        gsi_pk = 'run'
-        gsi_sk = f"{created_at_timestamp}#{self.run_id}"
-        column_values = {
-            'run_id': self.run_id,
-            'training_dataset_type': self.training_dataset_type,
-            'validation_dataset_type': self.validation_dataset_type,
-            'max_epochs': self.config.max_epochs,
-            'state_hash': self.state_hash,
-            'config': self.config.to_json_string(),
-            'started_at': created_at_timestamp,
-            'run_status': 'IN_PROGRESS',
-            'GSI_PK': gsi_pk,
-            'GSI_SK': gsi_sk
-        }
-        self.ddb_helper.put_item(pk, sk, column_values)
-
-    def _create_unfinished_run_record(self):
-        '''Create the initial "unfinished-run" record in DDB for this run.'''
-        pk = f"unfinished-run:{self.state_hash}"
-        sk = self.run_id
-        column_values = {
-            'run_id': self.run_id,
-            'state_hash': self.state_hash,
-            'trained_until_epoch': 0,
-            'snapshot_name': None,
-        }
-        self.ddb_helper.put_item(pk, sk, column_values)
-
     def _get_or_create_run(self):
         '''
         Sets run_id, start_epoch, and snapshot_name, either by resuming an
         existing run, or by creating a new run.
         '''
-        pk = f"unfinished-run:{self.state_hash}"
-        unfinished_runs = self.ddb_helper.query(pk)
+        unfinished_run = self.run_manager.get_unfinished_run(self.state_hash)
 
-        # if there are unfinished runs
-        print("Unfinished runs: ", unfinished_runs)
-        if len(unfinished_runs) > 0:
-            print(f"Found {len(unfinished_runs)} unfinished runs for state hash '{self.state_hash}'")
-            print(unfinished_runs)
+        # if there is an unfinished run
+        if unfinished_run:
+            print(f"Found unfinished run for state hash '{self.state_hash}'")
+            print(unfinished_run)
 
-            # return the first one
-            self.run_id = unfinished_runs[0]['run_id']
-            self.start_epoch = unfinished_runs[0]['trained_until_epoch']+1
-            self.snapshot_name = unfinished_runs[0]['snapshot_name']
+            # Resume the run
+            self.run_id = unfinished_run['run_id']
+            self.start_epoch = unfinished_run['trained_until_epoch']+1
+            self.snapshot_name = unfinished_run['snapshot_name']
         else:
-            # generate a unique UUID for a new run
-            self.run_id = str(uuid.uuid4())
+            # Create a new run.  This will also create a corresponding
+            # "unfinished-run" record which will allow us to resume this run if
+            # it's interrupted.  We'll need to delete that record when we're
+            # finished, with run_manager.delete_unfinished_run().
+            self.run_id = self.run_manager.create_run(self.training_dataset_type, self.validation_dataset_type, self.config.max_epochs, self.state_hash, self.config)
             self.start_epoch = 1
             self.snapshot_name = None
 
-            # Insert DDB records.  The "run" record is the permanent record for
-            # this run, and the "unfinished-run" record will only temporarily
-            # exist while the run is in progress, to allow for resuming based on
-            # the state hash.
-            self._create_run_record()
-            self._create_unfinished_run_record()
-
     def _mark_run_finished(self):
         # Update the "run_status" to "FINISHED" for this run.
-        pk = f"run:{self.run_id}"
-        sk = '0'
         column_values = {
             'run_status': "FINISHED",
             'finished_at': datetime.now().isoformat()
         }
-        self.ddb_helper.update_item(pk, sk, column_values)
+        self.run_manager.update_run(self.run_id, column_values)
 
         # Delete the "unfinished-run:<statehash>" record in DDB.
-        pk = f"unfinished-run:{self.state_hash}"
-        sk = self.run_id
-        self.ddb_helper.delete_item(pk, sk)
+        self.run_manager.delete_unfinished_run(self.state_hash, self.run_id)
 
     def run(self):
         '''Run the training and validation process.'''
@@ -245,7 +203,7 @@ class Run:
         print(self.model)
 
         self.model.to(self.device)
-        
+
         if self.config.use_answer_embeddings:
             # FIXME: Handle this in snapshot manager or VQADataset class
             self.model.answer_embeddings = self.model.answer_embeddings.to(self.device)
