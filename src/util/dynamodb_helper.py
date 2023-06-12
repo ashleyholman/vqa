@@ -103,3 +103,21 @@ class DynamoDBHelper:
 
         except ClientError as e:
             print(e.response['Error']['Message'])
+
+    def batch_get_items(self, keys):
+        try:
+            # Prepare keys for batch_get_item
+            formatted_keys = [{'PK': key[0], 'SK': key[1]} for key in keys]
+
+            response = self.dynamodb.batch_get_item(
+                RequestItems={
+                    self.TABLE_NAME: {
+                        'Keys': formatted_keys,
+                    }
+                }
+            )
+            
+            # Return the list of items from the response
+            return response['Responses'][self.TABLE_NAME]
+        except ClientError as e:
+            print(e.response['Error']['Message'])

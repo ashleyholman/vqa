@@ -58,6 +58,15 @@ class RunManager:
         pk = 'run'
 
         # Query the GSI for the N most recent runs
-        recent_runs = self.ddb_helper.query_gsi(pk, limit=N, scan_index_forward=False)
+        recent_run_ids = self.ddb_helper.query_gsi(pk, limit=N, scan_index_forward=False)
+        
+        # Extract run_ids by splitting 'PK' at ':' and getting the second part
+        run_ids = [run['PK'].split(':')[1] for run in recent_run_ids]
 
-        return recent_runs
+        # Prepare keys for batch_get_items
+        keys = [(f"run:{run_id}", '0') for run_id in run_ids]
+
+        # Fetch the actual primary run records using run_ids
+        run_records = self.ddb_helper.batch_get_items(keys)
+        
+        return run_records
