@@ -8,3 +8,6 @@ __pycache__/
 /EC2_IP_ADDRESS
 /snapshots
 /graphs
+/web-frontend/node_modules/
+/web-frontend/.env
+/web-frontend/build/

@@ -1,4 +1,5 @@
 import csv
+import decimal
 import json
 import os
 import matplotlib.pyplot as plt
@@ -282,6 +283,10 @@ class GraphGenerator():
             processed_runs.append((run, graph_index_page, metrics))
             print(f"Generated graphs for run: {run['run_id']} to outfile {graph_index_page}")
             print(f"Metrics: {metrics}")
+
+            # dump contents of processed_runs variable to a .json file
+            with open(f"{self.PROJECT_ROOT}/graphs/processed_runs.json", 'w') as f:
+                json.dump(processed_runs, f, default=lambda obj: float(obj) if isinstance(obj, decimal.Decimal) else TypeError, indent=4)
 
         index_page = self.generate_index_page(processed_runs)
         return index_page
