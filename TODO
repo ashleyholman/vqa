@@ -1,0 +1,12 @@
+- data analysis tooling
+- explore automated stopping
+- explore dynamic learning rate
+- explore how to find optimal learning rate
+- Implement queue for runs.  Submit config file to queue.  Implement autoscaling
+  based on queue to spin up and then shut down instances based on pending runs.
+- Implement automated lambda-based report generation and uploading to S3?  So I
+  can just refresh my web browser to see the results.
+- Check cosine similarity between raw answer embeddings to confirm clustering
+  hypothesis
+- run.py: Catch keyboard interrupt, set run status to USER_ABORTED
+- refactor performance graph html/css/js to be more modular
