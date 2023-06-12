@@ -6,6 +6,11 @@ from src.util.dynamodb_helper import DynamoDBHelper
 class RunManager:
     def __init__(self):
         self.ddb_helper = DynamoDBHelper()
+    
+    def get_run(self, run_id):
+        pk = f"run:{run_id}"
+        run_record = self.ddb_helper.get_item(pk, '0')
+        return run_record
 
     def get_unfinished_run(self, state_hash):
         pk = f"unfinished-run:{state_hash}"
@@ -47,3 +52,12 @@ class RunManager:
 
     def delete_unfinished_run(self, state_hash, run_id):
         self.ddb_helper.delete_item(f"unfinished-run:{state_hash}", run_id)
+
+    def get_recent_runs(self, N):
+        # Define the primary key value for the GSI
+        pk = 'run'
+
+        # Query the GSI for the N most recent runs
+        recent_runs = self.ddb_helper.query_gsi(pk, limit=N, scan_index_forward=False)
+
+        return recent_runs
