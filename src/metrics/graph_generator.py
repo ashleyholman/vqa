@@ -290,3 +290,52 @@ class GraphGenerator():
 
         index_page = self.generate_index_page(processed_runs)
         return index_page
+
+    def generate_json_files(self, runs, regenerate_existing=False):
+        ''' Generate JSON files for each run in the list of runs provided.
+            Also generate a runs.json file to be used by the index page that lists all runs.'''
+        json_files = []
+        index_metadata = []
+        for run in runs:
+            # skip mini-dataset runs
+            if run['training_dataset_type'] == 'mini':
+                continue
+
+            run_id = run['run_id']
+            metrics = self.__fetch_metrics(run_id)
+            max_trained_epoch = max(metrics.keys())
+            final_accuracy = metrics[max_trained_epoch]['validation_accuracy']
+            final_top_5_accuracy = metrics[max_trained_epoch]['validation_top_5_accuracy']
+            final_f1_score_micro = metrics[max_trained_epoch]['validation_f1_score_micro']
+            final_f1_score_macro = metrics[max_trained_epoch]['validation_f1_score_macro']
+
+            # copy specific keys from run to index_metadata
+            index_entry = {}
+            for key in ['run_id', 'started_at', 'run_status', 'config']:
+                index_entry[key] = run[key]
+            index_entry['num_trained_epochs'] = max_trained_epoch
+            index_entry['final_accuracy'] = final_accuracy
+            index_entry['final_top_5_accuracy'] = final_top_5_accuracy
+            index_entry['final_f1_score_micro'] = final_f1_score_micro
+            index_entry['final_f1_score_macro'] = final_f1_score_macro
+            index_metadata.append(index_entry)
+
+            # now generate the JSON file for this run
+            json_file = f"{self.PROJECT_ROOT}/web-frontend/public/data/run_{run_id}.json"
+            if not os.path.exists(json_file) or regenerate_existing:
+                data = { 'run_id': run_id, 'config': json.loads(run.get('config', '{}')) }
+                data['metrics'] = metrics
+                with open(json_file, 'w') as f:
+                    json.dump(data, f, default=lambda obj: float(obj) if isinstance(obj, decimal.Decimal) else TypeError, indent=4)
+                print(f"Generated JSON file for run: {run_id} to outfile {json_file}")
+            else:
+                print(f"JSON file for run: {run_id} already exists, skipping...")
+            json_files.append(json_file)
+
+            # write out the runs.json file
+            runs_file_name = f"{self.PROJECT_ROOT}/web-frontend/public/data/runs.json"
+            with open(runs_file_name, 'w') as f:
+                json.dump(index_metadata, f, default=lambda obj: float(obj) if isinstance(obj, decimal.Decimal) else TypeError, indent=4)
+                json_files.append(runs_file_name)
+
+        return json_files
