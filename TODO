@@ -11,5 +11,4 @@
 - run.py: Catch keyboard interrupt, set run status to USER_ABORTED
 - React app:
  - implement build script to publish to S3 (make new bucket)
- - make graph_performance.py update the processed_runs.json file in S3.
- - move individual run graph page into React app, using a graphing library?
+- fix ordering of runs output by RunsManager::get_recent_runs().
