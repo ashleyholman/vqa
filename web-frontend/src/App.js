@@ -12,7 +12,7 @@ function App() {
 
   useEffect(() => {
     // fetch data here
-    fetch(process.env.PUBLIC_URL + '/processed_runs.json')
+    fetch(process.env.PUBLIC_URL + '/data/runs.json')
       .then((response) => response.text())
       .then((text) => {
         try {

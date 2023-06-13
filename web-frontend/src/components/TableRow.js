@@ -4,18 +4,9 @@ import { convertToLocalTimestamp } from '../utils';
 
 import Config from './Config';
 
-function TableRow({ data }) {
-  const [run, outfile, metrics] = data;
-
-  // handle the case when metrics is empty
-  const keys = Object.keys(metrics);
-  const maxKey = keys.length > 0 ? Math.max(...keys.map(Number)) : null;
-  const last_epoch_metrics = maxKey !== null ? metrics[maxKey] : {};
-
-  const accuracy = last_epoch_metrics['validation_accuracy'];
-  const top_5_accuracy = last_epoch_metrics['validation_top_5_accuracy'];
+function TableRow({ run }) {
   const config_data = JSON.parse(run.config || '{}');
-  const num_epochs = keys.length;
+  const num_epochs = run['num_trained_epochs']
 
   const timestamp = convertToLocalTimestamp(run.started_at);
 
@@ -35,8 +26,9 @@ function TableRow({ data }) {
         <td>{timestamp}</td>
         <td>{run['run_status']}</td>
         <td>{num_epochs}</td>
-        <td>{accuracy}</td>
-        <td>{top_5_accuracy}</td>
+        <td>{run['final_accuracy'].toFixed(2)}</td>
+        <td>{run['final_top_5_accuracy'].toFixed(2)}</td>
+        <td>{run['final_f1_score_macro'].toFixed(2)}</td>
         <td>
           <button className="btn btn-primary" onClick={toggleConfigVisibility}>Show/Hide Config</button>
         </td>

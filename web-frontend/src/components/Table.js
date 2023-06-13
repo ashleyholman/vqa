@@ -12,12 +12,13 @@ function Table({ data }) {
           <th>Num Epochs</th>
           <th>Accuracy</th>
           <th>Top 5 Accuracy</th>
+          <th>F1 Macro</th>
           <th>Config</th>
         </tr>
       </thead>
       <tbody>
         {data.map((item, idx) => (
-          <TableRow key={idx} data={item} />
+          <TableRow key={idx} run={item} />
         ))}
       </tbody>
     </table>

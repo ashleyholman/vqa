@@ -1,20 +1,12 @@
-/*
-body {
-  background-color: #121212;
-  color: #fff;
-}
-
-.App {
-  background-color: #121212;
-  color: #fff;
-}
-
-.card {
-  background-color: #121212;
-  color: #fff;
+body, html {
+  background-color: #202427;
 }
 
 a {
-  color: #00ff00;
+  color: #00A878;
 }
-*/
+
+.recharts-default-tooltip {
+  background-color: #202427 !important;
+  border: none !important;
+}
