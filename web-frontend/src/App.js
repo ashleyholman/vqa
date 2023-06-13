@@ -1,6 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import './App.css';
+import { Routes, Route } from 'react-router-dom';
+
 import Table from './components/Table';
+import RunDetails from './components/RunDetails';
+
+import './App.css';
 
 function App() {
   const [data, setData] = useState([]);
@@ -28,7 +32,10 @@ function App() {
 
   return (
     <div className="App">
-      <Table data={data} />
+      <Routes>
+        <Route path="/" element={<Table data={data} />} />
+        <Route path="/run/:runId" element={<RunDetails />} />
+      </Routes>
     </div>
   );
 }

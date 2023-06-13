@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import Config from './Config';
-
+import { Link } from 'react-router-dom';
 import { convertToLocalTimestamp } from '../utils';
+
+import Config from './Config';
 
 function TableRow({ data }) {
   const [run, outfile, metrics] = data;
@@ -28,14 +29,16 @@ function TableRow({ data }) {
   return (
     <>
       <tr>
-        <td>{run.run_id}</td>
+        <td>
+          <Link to={`/run/${run.run_id}`}>{run.run_id}</Link>
+        </td>
         <td>{timestamp}</td>
         <td>{run['run_status']}</td>
         <td>{num_epochs}</td>
         <td>{accuracy}</td>
         <td>{top_5_accuracy}</td>
         <td>
-          <button class="btn btn-primary" onClick={toggleConfigVisibility}>Show/Hide Config</button>
+          <button className="btn btn-primary" onClick={toggleConfigVisibility}>Show/Hide Config</button>
         </td>
       </tr>
       {isConfigVisible && 
