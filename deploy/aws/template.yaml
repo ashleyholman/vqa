@@ -13,13 +13,13 @@ Parameters:
   UseCPUSpotInstances:
     Type: String
     Default: true
-    AllowedValues: 
+    AllowedValues:
       - 'true'
       - 'false'
   UseGPUSpotInstances:
     Type: String
     Default: true
-    AllowedValues: 
+    AllowedValues:
       - 'true'
       - 'false'
 
@@ -35,6 +35,57 @@ Resources:
     Type: AWS::S3::Bucket
     Properties:
       BucketName: vqa-ap-southeast-1
+
+  VqaWebBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: vqa-web
+
+  VQAWebBucketOriginAccessIdentity:
+    Type: AWS::CloudFront::CloudFrontOriginAccessIdentity
+    Properties:
+      CloudFrontOriginAccessIdentityConfig:
+        Comment: Access Identity for VqaWebBucket
+
+  VqaWebBucketPolicyOAI:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref VqaWebBucket
+      PolicyDocument:
+        Statement:
+        - Sid: PublicReadGetObject
+          Effect: Allow
+          Principal:
+            CanonicalUser: !GetAtt VQAWebBucketOriginAccessIdentity.S3CanonicalUserId
+          Action:
+          - s3:GetObject
+          Resource:
+          - Fn::Join:
+            - ""
+            - - "arn:aws:s3:::"
+              - !Ref VqaWebBucket
+              - "/*"
+
+  VqaCloudFrontDistribution:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Enabled: true
+        Origins:
+          - DomainName: !GetAtt VqaWebBucket.RegionalDomainName
+            Id: VqaWebBucket
+            S3OriginConfig:
+              OriginAccessIdentity: !Sub origin-access-identity/cloudfront/${VQAWebBucketOriginAccessIdentity}
+        DefaultRootObject: index.html
+        DefaultCacheBehavior:
+          AllowedMethods: [GET, HEAD]
+          CachedMethods: [GET, HEAD]
+          TargetOriginId: VqaWebBucket
+          ForwardedValues:
+            QueryString: false
+            Cookies:
+              Forward: none
+          ViewerProtocolPolicy: redirect-to-https
 
   VQADynamoDBTable:
     Type: AWS::DynamoDB::Table
@@ -102,7 +153,7 @@ Resources:
             - s3:PutObject
             - s3:GetObject
             - s3:DeleteObject
-            Resource: 
+            Resource:
             - !Sub arn:aws:s3:::${VqaBucket}/*
           - Effect: Allow
             Action:
@@ -136,7 +187,7 @@ Resources:
         KeyName: vqa
         SecurityGroupIds:
         - !GetAtt VQATrainingInferenceSecurityGroup.GroupId
-        InstanceMarketOptions: 
+        InstanceMarketOptions:
           Fn::If:
             - UseCPUSpotInstancesCondition
             - MarketType: spot
@@ -178,7 +229,7 @@ Resources:
         KeyName: vqa
         SecurityGroupIds:
         - !GetAtt VQATrainingInferenceSecurityGroup.GroupId
-        InstanceMarketOptions: 
+        InstanceMarketOptions:
           Fn::If:
             - UseGPUSpotInstancesCondition
             - MarketType: spot
@@ -230,12 +281,16 @@ Outputs:
     Description: The name of the GPU Auto Scaling Group
     Value: !Ref VQAGPUAutoscalingGroup
 
+  WebsiteURL:
+    Value: !GetAtt [VqaCloudFrontDistribution, DomainName]
+    Description: URL for website hosted on S3
+
 Conditions:
-  UseCPUSpotInstancesCondition: 
+  UseCPUSpotInstancesCondition:
     Fn::Equals:
       - !Ref UseCPUSpotInstances
       - 'true'
-  UseGPUSpotInstancesCondition: 
+  UseGPUSpotInstancesCondition:
     Fn::Equals:
       - !Ref UseGPUSpotInstances
       - 'true'
