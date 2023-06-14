@@ -6,7 +6,7 @@ from src.util.dynamodb_helper import DynamoDBHelper
 class RunManager:
     def __init__(self):
         self.ddb_helper = DynamoDBHelper()
-    
+
     def get_run(self, run_id):
         pk = f"run:{run_id}"
         run_record = self.ddb_helper.get_item(pk, '0')
@@ -20,7 +20,7 @@ class RunManager:
     def create_run(self, training_dataset_type, validation_dataset_type, max_epochs, state_hash, config):
         run_id = str(uuid.uuid4())
         created_at_timestamp = datetime.datetime.now().isoformat()
-        
+
         # Create the "run" record in DDB
         run_record = {
             'run_id': run_id,
@@ -59,7 +59,7 @@ class RunManager:
 
         # Query the GSI for the N most recent runs
         recent_run_ids = self.ddb_helper.query_gsi(pk, limit=N, scan_index_forward=False)
-        
+
         # Extract run_ids by splitting 'PK' at ':' and getting the second part
         run_ids = [run['PK'].split(':')[1] for run in recent_run_ids]
 
@@ -68,5 +68,8 @@ class RunManager:
 
         # Fetch the actual primary run records using run_ids
         run_records = self.ddb_helper.batch_get_items(keys)
-        
+
+        # batch_get_items returns the items in no particular order, so we have to sort them again
+        run_records = sorted(run_records, key=lambda x: x['started_at'], reverse=True)
+
         return run_records

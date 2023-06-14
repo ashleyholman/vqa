@@ -17,8 +17,6 @@ def main():
 
     run_manager = RunManager()
     recent_runs = run_manager.get_recent_runs(10)
-    # print the list of recent run's run_id's in order
-    print(f'List of recent runs: {[run["run_id"] for run in recent_runs]}')
     json_files = graph_generator.generate_json_files(recent_runs, args.regenerate_existing)
 
     print(f'Results written to JSON files to {json_files}.\n')
