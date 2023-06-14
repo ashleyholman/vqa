@@ -37,7 +37,6 @@ function RunDetails() {
 
   return (
     <div style={{ margin: '0 auto', padding: '0 20px', maxWidth: '95%' }}>
-      <h1>Run ID: {runId}</h1>
       <h2 style={{ overflowWrap: 'anywhere' }}>{config['model_name']}</h2>
       <Config configData={config} />
       <div style={{ marginBottom: '10px' }}>

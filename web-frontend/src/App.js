@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Routes, Route } from 'react-router-dom';
 
+import Breadcrumbs from './components/Breadcrumbs';
+import Header from './components/Header';
 import Table from './components/Table';
 import RunDetails from './components/RunDetails';
 
@@ -32,6 +34,8 @@ function App() {
 
   return (
     <div className="App">
+      <Header />
+      <Breadcrumbs />
       <Routes>
         <Route path="/" element={<Table data={data} />} />
         <Route path="/run/:runId" element={<RunDetails />} />
