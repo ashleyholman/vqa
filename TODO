@@ -10,5 +10,9 @@
   hypothesis
 - run.py: Catch keyboard interrupt, set run status to USER_ABORTED
 - React app:
- - implement build script to publish to S3 (make new bucket)
-- fix ordering of runs output by RunsManager::get_recent_runs().
+  * Add tabs on RunDetails page:
+    * performance charts
+    * error analysis
+  * Visualise N correct answers, N wrong answers?
+- Address cloudfront caching.  How long is it?  Make it something reasonable
+  like 5 mins for the static content and 20 secs for the json.
