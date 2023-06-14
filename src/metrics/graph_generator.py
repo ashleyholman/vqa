@@ -331,10 +331,10 @@ class GraphGenerator():
                 print(f"JSON file for run: {run_id} already exists, skipping...")
             json_files.append(json_file)
 
-            # write out the runs.json file
-            runs_file_name = f"{self.PROJECT_ROOT}/web-frontend/public/data/runs.json"
-            with open(runs_file_name, 'w') as f:
-                json.dump(index_metadata, f, default=lambda obj: float(obj) if isinstance(obj, decimal.Decimal) else TypeError, indent=4)
-                json_files.append(runs_file_name)
+        # write out the runs.json file
+        runs_file_name = f"{self.PROJECT_ROOT}/web-frontend/public/data/runs.json"
+        with open(runs_file_name, 'w') as f:
+            json.dump(index_metadata, f, default=lambda obj: float(obj) if isinstance(obj, decimal.Decimal) else TypeError, indent=4)
+            json_files.append(runs_file_name)
 
         return json_files
