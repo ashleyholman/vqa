@@ -304,20 +304,19 @@ class GraphGenerator():
             run_id = run['run_id']
             metrics = self.__fetch_metrics(run_id)
             max_trained_epoch = max(metrics.keys())
-            final_accuracy = metrics[max_trained_epoch]['validation_accuracy']
-            final_top_5_accuracy = metrics[max_trained_epoch]['validation_top_5_accuracy']
-            final_f1_score_micro = metrics[max_trained_epoch]['validation_f1_score_micro']
-            final_f1_score_macro = metrics[max_trained_epoch]['validation_f1_score_macro']
 
             # copy specific keys from run to index_metadata
             index_entry = {}
             for key in ['run_id', 'started_at', 'run_status', 'config']:
                 index_entry[key] = run[key]
             index_entry['num_trained_epochs'] = max_trained_epoch
-            index_entry['final_accuracy'] = final_accuracy
-            index_entry['final_top_5_accuracy'] = final_top_5_accuracy
-            index_entry['final_f1_score_micro'] = final_f1_score_micro
-            index_entry['final_f1_score_macro'] = final_f1_score_macro
+
+            # copy all validation_* metrics to final_* entries
+            for key, value in metrics[max_trained_epoch].items():
+                if key.startswith('validation_'):
+                    new_key = 'final_' + key.split('validation_')[1]
+                    index_entry[new_key] = value
+
             index_metadata.append(index_entry)
 
             # now generate the JSON file for this run
