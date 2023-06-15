@@ -23,21 +23,28 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
-echo Retrieving CloudFront distribution ID..
+# Check if --invalidate-cache option is passed
+if [ "$1" == "--invalidate-cache" ]; then
 
-# Get the CloudFront distribution ID for invalidation
-CLOUDFRONT_DISTRIBUTION_ID=$(aws cloudformation describe-stack-resource --stack-name vqa-stack --logical-resource-id VqaCloudFrontDistribution --query 'StackResourceDetail.PhysicalResourceId' --output text)
-if [ -z "$CLOUDFRONT_DISTRIBUTION_ID" ]; then
-    echo -e "\nFailed to get the CloudFront distribution ID. Exiting..."
-    exit 1
-fi
+    echo Retrieving CloudFront distribution ID..
 
-echo Invalidating CloudFront cache..
+    # Get the CloudFront distribution ID for invalidation
+    CLOUDFRONT_DISTRIBUTION_ID=$(aws cloudformation describe-stack-resource --stack-name vqa-stack --logical-resource-id VqaCloudFrontDistribution --query 'StackResourceDetail.PhysicalResourceId' --output text)
+    if [ -z "$CLOUDFRONT_DISTRIBUTION_ID" ]; then
+        echo -e "\nFailed to get the CloudFront distribution ID. Exiting..."
+        exit 1
+    fi
 
-# Create CloudFront invalidation
-aws cloudfront create-invalidation --distribution-id $CLOUDFRONT_DISTRIBUTION_ID --paths "/*"
-if [ $? -eq 0 ]; then
-    echo -e "\nSuccessfully invalidated CloudFront cache."
+    echo Invalidating CloudFront cache..
+
+    # Create CloudFront invalidation
+    aws cloudfront create-invalidation --distribution-id $CLOUDFRONT_DISTRIBUTION_ID --paths "/*"
+    if [ $? -eq 0 ]; then
+        echo -e "\nSuccessfully invalidated CloudFront cache."
+    else
+        echo -e "\nFailed to invalidate CloudFront cache."
+    fi
+
 else
-    echo -e "\nFailed to invalidate CloudFront cache."
+    echo -e "\nCache invalidation skipped.  Use --invalidate-cache option to enable."
 fi
