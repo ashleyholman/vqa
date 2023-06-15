@@ -86,6 +86,46 @@ Resources:
             Cookies:
               Forward: none
           ViewerProtocolPolicy: redirect-to-https
+          MinTTL: 1200
+          DefaultTTL: 1200
+          MaxTTL: 1200
+        CacheBehaviors:
+          - PathPattern: "/data/*.json"
+            MinTTL: 1
+            DefaultTTL: 1
+            MaxTTL: 1
+            AllowedMethods: [GET, HEAD]
+            CachedMethods: [GET, HEAD]
+            TargetOriginId: VqaWebBucket
+            ForwardedValues:
+              QueryString: false
+              Cookies:
+                Forward: none
+            ViewerProtocolPolicy: redirect-to-https
+          - PathPattern: "/*.html"
+            MinTTL: 5
+            DefaultTTL: 5
+            MaxTTL: 5
+            AllowedMethods: [GET, HEAD]
+            CachedMethods: [GET, HEAD]
+            TargetOriginId: VqaWebBucket
+            ForwardedValues:
+              QueryString: false
+              Cookies:
+                Forward: none
+            ViewerProtocolPolicy: redirect-to-https
+          - PathPattern: "/static/*"
+            MinTTL: 86400
+            DefaultTTL: 86400
+            MaxTTL: 31536000
+            AllowedMethods: [GET, HEAD]
+            CachedMethods: [GET, HEAD]
+            TargetOriginId: VqaWebBucket
+            ForwardedValues:
+              QueryString: false
+              Cookies:
+                Forward: none
+            ViewerProtocolPolicy: redirect-to-https
         CustomErrorResponses:
           - ErrorCode: 404
             ResponseCode: 200
