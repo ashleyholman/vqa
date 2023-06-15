@@ -10,3 +10,7 @@ a {
   background-color: #202427 !important;
   border: none !important;
 }
+
+.hidden-icon {
+  visibility: hidden;
+}

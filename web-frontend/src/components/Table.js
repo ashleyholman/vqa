@@ -12,7 +12,7 @@ function Table({ data }) {
 
   // Create effect that updates sortedData whenever data, sortField or sortOrder change
   useEffect(() => {
-    const newData = [...data];  // Copy the data array to avoid mutating props
+    const newData = [...data];
     newData.sort((a, b) => {
       if (a[sortField] < b[sortField]) {
         return sortOrder === 'asc' ? -1 : 1;
@@ -37,8 +37,10 @@ function Table({ data }) {
 
   // Function to render the sort arrow icon
   const renderSortArrow = (field) => {
-    if (sortField !== field) return;
-    return sortOrder === 'asc' ? <AiOutlineArrowUp /> : <AiOutlineArrowDown />;
+    if (sortField === field) {
+      return sortOrder === 'asc' ? <AiOutlineArrowUp /> : <AiOutlineArrowDown />;
+    }
+    return <AiOutlineArrowDown className="hidden-icon" />;
   };
 
   return (
