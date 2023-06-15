@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { convertToLocalTimestamp } from '../utils';
 
-import Config from './Config';
+import ConfigModal from './ConfigModal';
 
 function TableRow({ run }) {
   const config_data = JSON.parse(run.config || '{}');
@@ -30,15 +30,11 @@ function TableRow({ run }) {
         <td>{run['final_top_5_accuracy'].toFixed(2)}</td>
         <td>{run['final_f1_score_macro'].toFixed(2)}</td>
         <td>
-          <button className="btn btn-primary" onClick={toggleConfigVisibility}>Show/Hide Config</button>
+          <button className="btn btn-primary" onClick={toggleConfigVisibility}>View Config</button>
         </td>
       </tr>
       {isConfigVisible && 
-        <tr>
-          <td colSpan="7">
-            <Config configData={config_data} />
-          </td>
-        </tr>
+        <ConfigModal configData={config_data} onClose={toggleConfigVisibility} />
       }
     </>
   );

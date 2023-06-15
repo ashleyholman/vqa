@@ -1,25 +1,53 @@
 import React from 'react';
 
 function Config({ configData }) {
-  return (
-    <div className="card bg-dark text-white card-body">
-      {Object.entries(configData).map(([key, value], idx) => {
+  const containerStyle = {
+    backgroundColor: '#242424',
+    color: 'white',
+    padding: '20px',
+    borderRadius: '5px',
+    fontFamily: 'Arial, sans-serif',
+  };
 
-        // Special rendering for boolean values
-        let value_class = '';
+  const rowStyle = {
+    display: 'flex',
+    justifyContent: 'space-between',
+    borderBottom: '1px solid #444',
+    padding: '10px 0',
+    fontSize: '16px',
+  };
+
+  const keyStyle = {
+    fontWeight: 'bold',
+  };
+
+  const valueStyle = {
+    fontWeight: 'normal',
+    textAlign: 'right',
+  };
+
+  return (
+    <div style={containerStyle}>
+      {Object.entries(configData).map(([key, value], idx) => {
+        // skip model_name as it's too wide and not necessary to display.  we can display it elsewhere.
+        if (key === 'model_name') {
+          return null;
+        }
+        let displayValue;
         if (typeof value === 'boolean') {
-          value_class = "badge " + (value ? 'badge-success' : 'badge-danger');
-          value = value.toString();
+          displayValue = (
+            <span style={{color: value ? 'limegreen' : 'red'}}>
+              {value.toString()}
+            </span>
+          );
+        } else {
+          displayValue = value;
         }
 
         return (
-          <div key={idx} className="row mb-2">
-            <div className="col-sm-3">
-              <span className="badge badge-info">{key}</span>
-            </div>
-            <div className="col-sm-9">
-              <span className={value_class}>{value}</span>
-            </div>
+          <div key={idx} style={rowStyle}>
+            <div style={keyStyle}>{key}</div>
+            <div style={valueStyle}>{displayValue}</div>
           </div>
         );
       })}
