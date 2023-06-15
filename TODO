@@ -13,6 +13,5 @@
   * Add tabs on RunDetails page:
     * performance charts
     * error analysis
+  * Fix heading width sorting issue
   * Visualise N correct answers, N wrong answers?
-- Address cloudfront caching.  How long is it?  Make it something reasonable
-  like 5 mins for the static content and 20 secs for the json.
