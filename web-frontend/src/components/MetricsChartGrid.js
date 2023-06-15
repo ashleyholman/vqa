@@ -1,5 +1,6 @@
 import React from 'react';
 import MetricChart from './MetricChart';
+import './MetricsChartGrid.css';
 
 function MetricsChartGrid({ metrics }) {
   const metricsList = ['accuracy', 'top_5_accuracy', 'precision_macro', 'precision_micro', 'recall_macro', 'recall_micro', 'f1_score_macro', 'f1_score_micro'];
@@ -11,7 +12,7 @@ function MetricsChartGrid({ metrics }) {
 
   return (
     <div>
-      <div style={{ marginBottom: '10px' }}>
+      <div className="metrics-chart">
         <MetricChart 
           title="loss"
           data={chartData}
@@ -20,13 +21,10 @@ function MetricsChartGrid({ metrics }) {
           color2="#00FFFF"
         />
       </div>
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 500px), 1fr))',
-        gap: '10px',
-      }}>
-        {metricsList.map(metric => (
+      <div className="metrics-chart-grid">
+        {metricsList.map((metric, index) => (
           <MetricChart
+            key={index}
             title={metric}
             data={chartData}
             metricName={metric}

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import TableRow from './TableRow';
 import { AiOutlineArrowUp, AiOutlineArrowDown } from 'react-icons/ai'; // import icons
+import './Table.css';
 
 function Table({ data }) {
   // Add state for sort field and order
@@ -48,13 +49,13 @@ function Table({ data }) {
       <table className="table table-dark">
       <thead>
           <tr>
-            <th onClick={() => handleSort('run_id')}><div style={{ display: 'flex', alignItems: 'center' }}>Run ID {renderSortArrow('run_id')}</div></th>
-            <th onClick={() => handleSort('started_at')}><div style={{ display: 'flex', alignItems: 'center' }}>Timestamp {renderSortArrow('started_at')}</div></th>
-            <th onClick={() => handleSort('run_status')}><div style={{ display: 'flex', alignItems: 'center' }}>Status {renderSortArrow('run_status')}</div></th>
-            <th onClick={() => handleSort('num_trained_epochs')}><div style={{ display: 'flex', alignItems: 'center' }}>Num Epochs {renderSortArrow('num_trained_epochs')}</div></th>
-            <th onClick={() => handleSort('final_accuracy')}><div style={{ display: 'flex', alignItems: 'center' }}>Accuracy {renderSortArrow('final_accuracy')}</div></th>
-            <th onClick={() => handleSort('final_top_5_accuracy')}><div style={{ display: 'flex', alignItems: 'center' }}>Top 5 Accuracy {renderSortArrow('final_top_5_accuracy')}</div></th>
-            <th onClick={() => handleSort('final_f1_score_macro')}><div style={{ display: 'flex', alignItems: 'center' }}>F1 Macro {renderSortArrow('final_f1_score_macro')}</div></th>
+            <th onClick={() => handleSort('run_id')}><div className="header-div">Run ID {renderSortArrow('run_id')}</div></th>
+            <th onClick={() => handleSort('started_at')}><div className="header-div">Timestamp {renderSortArrow('started_at')}</div></th>
+            <th onClick={() => handleSort('run_status')}><div className="header-div">Status {renderSortArrow('run_status')}</div></th>
+            <th onClick={() => handleSort('num_trained_epochs')}><div className="header-div">Num Epochs {renderSortArrow('num_trained_epochs')}</div></th>
+            <th onClick={() => handleSort('final_accuracy')}><div className="header-div">Accuracy {renderSortArrow('final_accuracy')}</div></th>
+            <th onClick={() => handleSort('final_top_5_accuracy')}><div className="header-div">Top 5 Accuracy {renderSortArrow('final_top_5_accuracy')}</div></th>
+            <th onClick={() => handleSort('final_f1_score_macro')}><div className="header-div">F1 Macro {renderSortArrow('final_f1_score_macro')}</div></th>
             <th>Config</th>
           </tr>
         </thead>
@@ -67,5 +68,5 @@ function Table({ data }) {
     </div>
   );
 }
-  
-  export default Table;
+
+export default Table;

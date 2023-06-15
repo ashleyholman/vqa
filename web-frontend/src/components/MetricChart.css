@@ -1,0 +1,32 @@
+/* metric-chart-container gives the charts their black backgrond */
+.metric-chart-container {
+  background-color: black;
+  color: white;
+  padding: 10px 0;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* this gives the charts some padding around them */
+.metric-chart-inner {
+  padding: 20px;
+}
+
+.metric-chart-title {
+  text-align: center;
+}
+
+.custom-tooltip {
+  background-color: #333;
+  border-color: #999;
+  padding: 10px;
+  border-radius: 5px;
+}
+
+.custom-tooltip .label {
+  font-weight: bold;
+}
+
+.label-style {
+  fill: white;
+}

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import Config from './Config';
 import MetricsChartGrid from './MetricsChartGrid.js';
+import './RunDetails.css';
 
 function RunDetails() {
   const { runId } = useParams();
@@ -28,8 +29,8 @@ function RunDetails() {
   const config = runData['config'];
 
   return (
-    <div style={{ margin: '0 auto', padding: '0 20px', maxWidth: '95%' }}>
-      <h2 style={{ overflowWrap: 'anywhere' }}>{config['model_name']}</h2>
+    <div className="run-details">
+      <h2 className="run-details-title">{config['model_name']}</h2>
       <Config configData={config} />
       <MetricsChartGrid metrics={runData.metrics} />
     </div>
