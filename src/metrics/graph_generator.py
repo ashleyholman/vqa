@@ -79,24 +79,34 @@ class GraphGenerator():
         json_files = []
         index_metadata = []
         for run in runs:
-            # skip mini-dataset runs
-            if run['training_dataset_type'] == 'mini':
+            run_id = run['run_id']
+
+            if run['validation_dataset_type'] == 'mini':
+                is_mini_dataset = True
+                metrics_prefix = 'mini_'
+            else:
+                is_mini_dataset = False
+                metrics_prefix = 'validation_'
+
+            metrics = self.__fetch_metrics(run_id, is_mini_dataset)
+
+            # skip this run if no metrics were found
+            if not metrics:
+                print(f"No metrics found for run: {run_id}.  Skipping.")
                 continue
 
-            run_id = run['run_id']
-            metrics = self.__fetch_metrics(run_id)
             max_trained_epoch = max(metrics.keys())
 
             # copy specific keys from run to index_metadata
             index_entry = {}
-            for key in ['run_id', 'started_at', 'run_status', 'config']:
+            for key in ['run_id', 'started_at', 'run_status', 'config', 'validation_dataset_type']:
                 index_entry[key] = run[key]
             index_entry['num_trained_epochs'] = max_trained_epoch
 
-            # copy all validation_* metrics to final_* entries
+            # copy the last epoch's validation metrics to final_* entries
             for key, value in metrics[max_trained_epoch].items():
-                if key.startswith('validation_'):
-                    new_key = 'final_' + key.split('validation_')[1]
+                if key.startswith(metrics_prefix):
+                    new_key = 'final_' + key.split(metrics_prefix)[1]
                     index_entry[new_key] = value
 
             index_metadata.append(index_entry)
@@ -105,6 +115,7 @@ class GraphGenerator():
             json_file = f"{self.PROJECT_ROOT}/web-frontend/public/data/run_{run_id}.json"
             if not os.path.exists(json_file) or regenerate_existing:
                 data = { 'run_id': run_id, 'config': json.loads(run.get('config', '{}')) }
+                data['validation_dataset_type'] = run['validation_dataset_type']
                 data['metrics'] = metrics
                 with open(json_file, 'w') as f:
                     json.dump(data, f, default=lambda obj: float(obj) if isinstance(obj, decimal.Decimal) else TypeError, indent=4)
