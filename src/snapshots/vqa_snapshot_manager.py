@@ -14,6 +14,7 @@ from src.models.model_configuration import ModelConfiguration
 from src.models.vqa_model import VQAModel
 from src.snapshots.snapshot import Snapshot
 from src.util.dynamodb_helper import DynamoDBHelper
+from src.util.s3_helper import S3Helper
 
 class SnapshotNotFoundException(Exception):
     pass
@@ -23,10 +24,9 @@ class InvalidSnapshotException(Exception):
 
 class VQASnapshotManager:
     LOCAL_CACHE_DIR = os.path.join(os.path.dirname(os.path.realpath(__file__)), '../../snapshots')
-    S3_BUCKET = 'vqa-ap-southeast-1'
 
     def __init__(self):
-        self.s3_client = boto3.client('s3')
+        self.s3_helper = S3Helper()
         self.ddb_helper = DynamoDBHelper()
         self.config = ModelConfiguration()
 
@@ -121,22 +121,17 @@ class VQASnapshotManager:
         self.ddb_helper.put_item(pk, sk, metadata)
 
     def list_snapshots_in_s3(self):
-        try:
-            response = self.s3_client.list_objects_v2(
-                Bucket=self.S3_BUCKET,
-                Prefix='snapshots/'
-            )
+        object_keys = self.s3_helper.list_objects(S3Helper.BACKEND_BUCKET, 'snapshots')
 
-            snapshot_names = set()
-            for obj in response.get('Contents', []):
-                prefix, snapshot_name, _ = obj['Key'].split('/', 2)
-                if prefix == 'snapshots':
-                    snapshot_names.add(snapshot_name)
+        # the object keys are backup files, like
+        # "snapshots/{snapshot_name}/model_weights.pth". Take just the
+        # snapshot_name and insert them into a set to make them unique.
+        snapshot_names = set()
+        for key in object_keys:
+            snapshot_name = key.split('/')[1]
+            snapshot_names.add(snapshot_name)
 
-            return list(snapshot_names)
-        except Exception as e:
-            print(f"Failed to list snapshots: {e}")
-            return []
+        return snapshot_names
 
     def delete_snapshot(self, snapshot_name):
         # Safety check to ensure snapshot_name is not empty
@@ -149,17 +144,9 @@ class VQASnapshotManager:
         if os.path.exists(local_snapshot_dir):
             shutil.rmtree(local_snapshot_dir)
 
-        # Remove from S3
-        s3_bucket = self.S3_BUCKET
+        # Remove all of the snapshot's objects from S3
         s3_prefix = f"snapshots/{snapshot_name}/"
-
-        s3_resource = boto3.resource('s3')
-
-        s3_bucket_resource = s3_resource.Bucket(s3_bucket)
-
-        # Iterate over all objects with the given prefix and delete
-        for obj in s3_bucket_resource.objects.filter(Prefix=s3_prefix):
-            s3_resource.Object(s3_bucket_resource.name, obj.key).delete()
+        self.s3_helper.delete_prefix_recursive(S3Helper.BACKEND_BUCKET, s3_prefix)
 
     # Returns a list of all snapshots for a given model name and dataset type,
     # based on the records in DynamoDB.
@@ -192,7 +179,7 @@ class VQASnapshotManager:
         try:
             for filename in ["model_weights.pth", "optimizer_state.pth", "metadata.json"]:
                 key = f"snapshots/{snapshot_name}/{filename}"
-                self.s3_client.download_file(self.S3_BUCKET, key, os.path.join(local_snapshot_dir, filename))
+                self.s3_helper.download_file(self.S3_BUCKET, key, os.path.join(local_snapshot_dir, filename))
         except Exception as e:
             print(f"Failed to download snapshot {snapshot_name}: {e}")
 
@@ -204,6 +191,6 @@ class VQASnapshotManager:
         try:
             for filename in ["model_weights.pth", "optimizer_state.pth", "metadata.json"]:
                 key = f"snapshots/{snapshot_name}/{filename}"
-                self.s3_client.upload_file(os.path.join(self.LOCAL_CACHE_DIR, snapshot_name, filename), self.S3_BUCKET, key)
+                self.s3_helper.upload_file(S3Helper.BACKEND_BUCKET, key, os.path.join(self.LOCAL_CACHE_DIR, snapshot_name, filename))
         except NoCredentialsError:
             print("Credentials not available")
