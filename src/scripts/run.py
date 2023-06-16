@@ -70,7 +70,6 @@ class Run:
 
         # Save the model state, optimizer state, and answer classes
         self.snapshot_manager.save_snapshot(snapshot_name, self.model, self.optimizer, self.training_dataset, trained_until_epoch, lightweight=False, skipS3Storage=self.skip_s3_storage)
-        self.latest_snapshot_name = snapshot_name
 
         # Update our unfinished-run checkpoint in DDB
         column_values = {
@@ -79,6 +78,7 @@ class Run:
             'updated_at': datetime.now().isoformat()
         }
         self.run_manager.update_unfinished_run(self.state_hash, self.run_id, column_values)
+        self.snapshot_name = snapshot_name
 
     def _get_state_hash(self):
         '''Get a hash of the current state of the code and config.
@@ -129,12 +129,11 @@ class Run:
             self.start_epoch = 1
             self.snapshot_name = None
 
-    def _mark_run_finished(self):
-        # Update the "run_status" to "FINISHED" for this run.
+    def _mark_run_finished(self, final_status):
         column_values = {
-            'run_status': "FINISHED",
+            'run_status': final_status,
             'finished_at': datetime.now().isoformat(),
-            'snapshot_name': self.latest_snapshot_name
+            'snapshot_name': self.snapshot_name
         }
         self.run_manager.update_run(self.run_id, column_values)
 
@@ -218,51 +217,58 @@ class Run:
         model_tester = ModelTester(self.config, self.validation_dataset, num_dataloader_workers)
         performance_tracker_reusable = PerformanceTracker()
 
-        for epoch in range(start_epoch, self.config.max_epochs+1):
-            print(f"Epoch {epoch}/{self.config.max_epochs}")
+        try:
+            for epoch in range(start_epoch, self.config.max_epochs+1):
+                print(f"Epoch {epoch}/{self.config.max_epochs}")
 
-            is_snapshot_epoch = (epoch % self.config.snapshot_every_epochs == 0)
-            is_metrics_epoch = (epoch % self.config.metrics_every_epochs == 0)
-            performance_tracker = None
+                is_snapshot_epoch = (epoch % self.config.snapshot_every_epochs == 0)
+                is_metrics_epoch = (epoch % self.config.metrics_every_epochs == 0)
+                performance_tracker = None
 
-            start_time = time.time()
+                start_time = time.time()
 
-            if is_metrics_epoch:
-                performance_tracker = performance_tracker_reusable
+                if is_metrics_epoch:
+                    performance_tracker = performance_tracker_reusable
+                    performance_tracker.reset()
+
+                print("Begin training...")
+                model_trainer.train_one_epoch(performance_tracker)
+
+                elapsed_time = time.time() - start_time
+                print(f"Epoch {epoch} completed training at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}, took {elapsed_time/60:.2f} minutes.")
+
+                if is_metrics_epoch:
+                    performance_tracker.print_report()
+                    training_metrics_manager.store_performance_metrics(self.config.model_name, self.training_dataset_type, epoch, performance_tracker.get_metrics(), True, self.run_id)
+
+                if is_snapshot_epoch:
+                    # Update our checkpoint in S3 and DDB
+                    self.set_restore_point(epoch)
+
+                if not is_metrics_epoch:
+                    # if it's not a metrics epoch, we don't need to do validation.  Continue to the next epoch.
+                    continue
+
+                print("Validating model...")
                 performance_tracker.reset()
+                model_tester.test(self.model, performance_tracker, self.device, self.no_progress_bar)
 
-            print("Begin training...")
-            model_trainer.train_one_epoch(performance_tracker)
-
-            elapsed_time = time.time() - start_time
-            print(f"Epoch {epoch} completed training at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}, took {elapsed_time/60:.2f} minutes.")
-
-            if is_metrics_epoch:
+                # Print performance report
                 performance_tracker.print_report()
-                training_metrics_manager.store_performance_metrics(self.config.model_name, self.training_dataset_type, epoch, performance_tracker.get_metrics(), True, self.run_id)
 
-            if is_snapshot_epoch:
-                # Update our checkpoint in S3 and DDB
-                self.set_restore_point(epoch)
+                # store metrics
+                validation_metrics_manager.store_performance_metrics(self.config.model_name, self.validation_dataset_type, epoch, performance_tracker.get_metrics(), True, self.run_id)
 
-            if not is_metrics_epoch:
-                # if it's not a metrics epoch, we don't need to do validation.  Continue to the next epoch.
-                continue
-
-            print("Validating model...")
-            performance_tracker.reset()
-            model_tester.test(self.model, performance_tracker, self.device, self.no_progress_bar)
-
-            # Print performance report
-            performance_tracker.print_report()
-
-            # store metrics
-            validation_metrics_manager.store_performance_metrics(self.config.model_name, self.validation_dataset_type, epoch, performance_tracker.get_metrics(), True, self.run_id)
+        except KeyboardInterrupt:
+            print("KeyboardInterrupt detected. Ending the training...")
+            self._mark_run_finished('USER_ABORTED')
+            print("Run aborted by user.")
+            exit(0)
 
         if not is_snapshot_epoch:
             # the last epoch wasn't a snapshot epoch.  take a final snapshot since we're done training.
-            self.set_restore_point(self.config.max_epochs)
-        self._mark_run_finished()
+            self.set_restore_point(epoch)
+        self._mark_run_finished('FINISHED')
         print("Run complete.")
 
 if __name__ == "__main__":
