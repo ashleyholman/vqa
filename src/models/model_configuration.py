@@ -30,3 +30,11 @@ class ModelConfiguration:
 
     def to_json_string(self):
         return json.dumps(self.config, sort_keys=True)
+
+    # alternative constructor from a json string
+    @classmethod
+    def from_json_string(cls, json_string):
+        config = json.loads(json_string)
+        model_config = cls()
+        model_config.config = config
+        return model_config
