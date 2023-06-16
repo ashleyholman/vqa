@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import TableRow from './TableRow';
 import { AiOutlineArrowUp, AiOutlineArrowDown } from 'react-icons/ai'; // import icons
 import './Table.css';
@@ -11,20 +12,23 @@ function Table({ data }) {
   // Add sortedData state to keep the sorted data
   const [sortedData, setSortedData] = useState([]);
 
-  // Create effect that updates sortedData whenever data, sortField or sortOrder change
+  // Get URL parameters
+  const location = useLocation();
+  const queryParams = new URLSearchParams(location.search);
+  const showMini = queryParams.get('showMini') === 'true';
+
   useEffect(() => {
-    const newData = [...data];
-    newData.sort((a, b) => {
-      if (a[sortField] < b[sortField]) {
-        return sortOrder === 'asc' ? -1 : 1;
-      }
-      if (a[sortField] > b[sortField]) {
-        return sortOrder === 'asc' ? 1 : -1;
-      }
-      return 0;
-    });
+    let newData = [...data];
+
+    // If showMini is false, filter out mini runs
+    if (!showMini) {
+      newData = newData.filter(run => run.validation_dataset_type !== 'mini');
+    }
+
+    newData.sort(/*... existing sorting code ...*/);
+
     setSortedData(newData);
-  }, [data, sortField, sortOrder]);
+  }, [data, sortField, sortOrder, showMini]);
 
   // Function to handle clicking a column header
   const handleSort = (field) => {

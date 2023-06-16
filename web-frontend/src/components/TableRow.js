@@ -10,6 +10,9 @@ function TableRow({ run }) {
 
   const timestamp = convertToLocalTimestamp(run.started_at);
 
+  // Check if the run uses a mini dataset
+  const isMiniRun = run.validation_dataset_type === 'mini';
+
   // define the visibility state for the config
   const [isConfigVisible, setConfigVisible] = useState(false);
 
@@ -19,7 +22,7 @@ function TableRow({ run }) {
 
   return (
     <>
-      <tr>
+      <tr className={isMiniRun ? 'mini-run' : ''}>
         <td>
           <Link to={`/run/${run.run_id}`}>{run.run_id}</Link>
         </td>

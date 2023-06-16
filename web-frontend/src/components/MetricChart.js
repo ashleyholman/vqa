@@ -2,11 +2,37 @@ import { LineChart, Line, CartesianGrid, XAxis, YAxis, Tooltip, ResponsiveContai
 
 import './MetricChart.css';
 
-function MetricChart({ title, data, metricName, color1, color2 }) {
-  const metric1Name = `training_${metricName}`;
-  const metric2Name = `validation_${metricName}`;
+function MetricChart({ title, data, metricName, isMiniRun }) {
+  // Define a mapping for the colors
+  const colorMap = {
+    'training': '#FFFF00',
+    'validation': '#00FFFF',
+    'mini': '#FF69B4' // hot pink
+  };
 
-  const allValues = data.flatMap(d => [d[metric1Name], d[metric2Name]]);
+  // Define the metrics and colors based on isMiniRun
+  let metrics;
+  if (isMiniRun) {
+    metrics = [
+      {
+        name: `mini_${metricName}`,
+        color: colorMap['mini']
+      }
+    ];
+  } else {
+    metrics = [
+      {
+        name: `training_${metricName}`,
+        color: colorMap['training']
+      },
+      {
+        name: `validation_${metricName}`,
+        color: colorMap['validation']
+      }
+    ];
+  }
+
+  const allValues = data.flatMap(d => metrics.map(m => d[m.name]));
   const minVal = Math.floor(Math.min(...allValues));
   const maxVal = Math.ceil(Math.max(...allValues));
   const yticks = Array.from({ length: maxVal - minVal + 1 }, (_, i) => minVal + i);
@@ -35,8 +61,9 @@ function MetricChart({ title, data, metricName, color1, color2 }) {
           <h3 className="metric-chart-title">{title}</h3>
           <ResponsiveContainer width='100%' height={400}>
             <LineChart data={data} margin={{ top: 5, right: 10, left: 10, bottom: 20 }}>
-              <Line type="monotone" dataKey={metric1Name} stroke={color1} strokeWidth={2} dot={<circle r={3} fill={color1} />} />
-              <Line type="monotone" dataKey={metric2Name} stroke={color2} strokeWidth={2} dot={<circle r={3} fill={color2} />} />
+              {metrics.map(m => (
+                <Line key={m.name} type="monotone" dataKey={m.name} stroke={m.color} strokeWidth={2} dot={<circle r={3} fill={m.color} />} />
+              ))}
               <CartesianGrid stroke="#ccc" strokeDasharray="3 3" vertical={false} />
               <XAxis dataKey="epoch" stroke="white">
                 <Label value="Epochs" offset={-10} position="insideBottom" className="label-style" />

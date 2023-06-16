@@ -2,7 +2,7 @@ import React from 'react';
 import MetricChart from './MetricChart';
 import './MetricsChartGrid.css';
 
-function MetricsChartGrid({ metrics }) {
+function MetricsChartGrid({ metrics, isMiniRun }) {
   const metricsList = ['accuracy', 'top_5_accuracy', 'precision_macro', 'precision_micro', 'recall_macro', 'recall_micro', 'f1_score_macro', 'f1_score_micro'];
 
   const chartData = Object.keys(metrics).map((key) => ({
@@ -17,8 +17,7 @@ function MetricsChartGrid({ metrics }) {
           title="loss"
           data={chartData}
           metricName="loss"
-          color1="#FFFF00"
-          color2="#00FFFF"
+          isMiniRun={isMiniRun}
         />
       </div>
       <div className="metrics-chart-grid">
@@ -28,8 +27,7 @@ function MetricsChartGrid({ metrics }) {
             title={metric}
             data={chartData}
             metricName={metric}
-            color1="#FFFF00"
-            color2="#00FFFF"
+            isMiniRun={isMiniRun}
           />
         ))}
       </div>

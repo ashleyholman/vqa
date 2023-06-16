@@ -27,12 +27,13 @@ function RunDetails() {
   }
 
   const config = runData['config'];
+  const isMiniRun = runData['validation_dataset_type'] === 'mini';
 
   return (
     <div className="run-details">
       <h2 className="run-details-title">{config['model_name']}</h2>
       <Config configData={config} />
-      <MetricsChartGrid metrics={runData.metrics} />
+      <MetricsChartGrid metrics={runData.metrics} isMiniRun={isMiniRun} />
     </div>
   );
 }
