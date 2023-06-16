@@ -35,6 +35,7 @@ class VQADataset(Dataset):
         self.input_ids = []
         self.attention_masks = []
         self.labels = []
+        self.question_ids = []
         self.image_ids = []
         self.images = {}
         self.settype = settype
@@ -114,6 +115,7 @@ class VQADataset(Dataset):
 
             self.labels.append(question_to_annotation[question['question_id']]['answer_class_id'])
             self.image_ids.append(question['image_id'])
+            self.question_ids.append(question['question_id'])
 
         if not self.embeddings_loaded:
             self._generate_and_save_all_embeddings()
@@ -236,10 +238,10 @@ class VQADataset(Dataset):
         return max(len(self.input_ids), len(self.question_embeddings))
 
     def __getitem__(self, idx):
-        image_id = self.image_ids[idx]
-
         item = {
             'label': self.labels[idx],
+            'question_id': self.question_ids[idx],
+            'image_id': self.image_ids[idx],
             'image_embedding': self.image_embeddings[idx],
             'question_embedding': self.question_embeddings[idx]
         }
@@ -249,6 +251,6 @@ class VQADataset(Dataset):
             item['attention_mask'] = self.attention_masks[idx]
 
         if self.with_images_features:
-            item['image'] = self.preprocess_image(image_id)
+            item['image'] = self.preprocess_image(self.image_ids[idx])
 
         return item
