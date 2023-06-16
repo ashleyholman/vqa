@@ -11,3 +11,4 @@ __pycache__/
 /web-frontend/node_modules/
 /web-frontend/.env
 /web-frontend/build/
+/web-frontend/public/data/
