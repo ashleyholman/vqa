@@ -70,6 +70,7 @@ class Run:
 
         # Save the model state, optimizer state, and answer classes
         self.snapshot_manager.save_snapshot(snapshot_name, self.model, self.optimizer, self.training_dataset, trained_until_epoch, lightweight=False, skipS3Storage=self.skip_s3_storage)
+        self.latest_snapshot_name = snapshot_name
 
         # Update our unfinished-run checkpoint in DDB
         column_values = {
@@ -77,7 +78,7 @@ class Run:
             'snapshot_name': snapshot_name,
             'updated_at': datetime.now().isoformat()
         }
-        self.run_manager.update_run(self.run_id, column_values)
+        self.run_manager.update_unfinished_run(self.state_hash, self.run_id, column_values)
 
     def _get_state_hash(self):
         '''Get a hash of the current state of the code and config.
@@ -132,7 +133,8 @@ class Run:
         # Update the "run_status" to "FINISHED" for this run.
         column_values = {
             'run_status': "FINISHED",
-            'finished_at': datetime.now().isoformat()
+            'finished_at': datetime.now().isoformat(),
+            'snapshot_name': self.latest_snapshot_name
         }
         self.run_manager.update_run(self.run_id, column_values)
 
@@ -240,7 +242,7 @@ class Run:
                 training_metrics_manager.store_performance_metrics(self.config.model_name, self.training_dataset_type, epoch, performance_tracker.get_metrics(), True, self.run_id)
 
             if is_snapshot_epoch:
-                # Update our unfinished-run checkpoint in DDB
+                # Update our checkpoint in S3 and DDB
                 self.set_restore_point(epoch)
 
             if not is_metrics_epoch:
@@ -257,6 +259,9 @@ class Run:
             # store metrics
             validation_metrics_manager.store_performance_metrics(self.config.model_name, self.validation_dataset_type, epoch, performance_tracker.get_metrics(), True, self.run_id)
 
+        if not is_snapshot_epoch:
+            # the last epoch wasn't a snapshot epoch.  take a final snapshot since we're done training.
+            self.set_restore_point(self.config.max_epochs)
         self._mark_run_finished()
         print("Run complete.")
 

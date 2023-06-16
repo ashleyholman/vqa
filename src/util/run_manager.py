@@ -50,6 +50,9 @@ class RunManager:
     def update_run(self, run_id, attributes):
         self.ddb_helper.update_item(f"run:{run_id}", '0', attributes)
 
+    def update_unfinished_run(self, state_hash, run_id, attributes):
+        self.ddb_helper.update_item(f"unfinished-run:{state_hash}", run_id, attributes)
+
     def delete_unfinished_run(self, state_hash, run_id):
         self.ddb_helper.delete_item(f"unfinished-run:{state_hash}", run_id)
 
