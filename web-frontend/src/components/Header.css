@@ -1,0 +1,30 @@
+@font-face {
+  font-family: 'BebasNeue';
+  src: local('BebasNeue'), url('../fonts/BebasNeue-Regular.ttf') format('truetype');
+  font-weight: 400; 
+  font-style: normal;
+}
+
+.header-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px;
+  background: linear-gradient(45deg, rgb(100, 0, 0), rgb(0, 100, 0), rgb(0, 0, 100));
+}
+
+.header-title {
+  color: white;
+  font-family: 'BebasNeue', sans-serif;
+  font-size: 4.5rem;
+}
+
+.github-link {
+  width: 30px;
+  height: 30px;
+}
+
+.github-mark {
+  width: 100%;
+  height: 100%;
+}
