@@ -1,7 +1,9 @@
 import argparse
 import datetime
 import hashlib
+import json
 import os
+import tempfile
 import time
 import uuid
 import torch
@@ -14,6 +16,7 @@ from datetime import datetime
 from src.data.vqa_dataset import VQADataset
 from src.metrics.metrics_manager import MetricsManager
 from src.metrics.performance_tracker import PerformanceTracker
+from src.metrics.error_tracker import ErrorTracker
 
 from src.models.model_configuration import ModelConfiguration
 from src.models.vqa_model import VQAModel
@@ -22,6 +25,7 @@ from src.util.dynamodb_helper import DynamoDBHelper
 from src.util.model_tester import ModelTester
 from src.util.model_trainer import ModelTrainer
 from src.util.run_manager import RunManager
+from src.util.s3_helper import S3Helper
 
 TRAINING_METRICS_SOURCE = "train_model"
 VALIDATION_METRICS_SOURCE = "test_model"
@@ -33,6 +37,7 @@ class Run:
         self.ddb_helper = DynamoDBHelper()
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.run_manager = RunManager()
+        self.s3_helper = S3Helper()
 
         self.skip_s3_storage = args.skip_s3_storage
         self.no_progress_bar = args.no_progress_bar
@@ -129,12 +134,16 @@ class Run:
             self.start_epoch = 1
             self.snapshot_name = None
 
-    def _mark_run_finished(self, final_status):
+    def _mark_run_finished(self, final_status, error_analysis_s3_url):
         column_values = {
             'run_status': final_status,
             'finished_at': datetime.now().isoformat(),
             'snapshot_name': self.snapshot_name
         }
+
+        if error_analysis_s3_url:
+            column_values['error_analysis_s3_url'] = error_analysis_s3_url
+
         self.run_manager.update_run(self.run_id, column_values)
 
         # Delete the "unfinished-run:<statehash>" record in DDB.
@@ -216,6 +225,7 @@ class Run:
         model_trainer = ModelTrainer(self.config, self.model, self.training_dataset, self.optimizer, num_dataloader_workers)
         model_tester = ModelTester(self.config, self.validation_dataset, num_dataloader_workers)
         performance_tracker_reusable = PerformanceTracker()
+        error_analysis_s3_url = None
 
         try:
             for epoch in range(start_epoch, self.config.max_epochs+1):
@@ -223,11 +233,13 @@ class Run:
 
                 is_snapshot_epoch = (epoch % self.config.snapshot_every_epochs == 0)
                 is_metrics_epoch = (epoch % self.config.metrics_every_epochs == 0)
+                is_last_epoch = (epoch == self.config.max_epochs)
                 performance_tracker = None
+                error_tracker = None
 
                 start_time = time.time()
 
-                if is_metrics_epoch:
+                if is_metrics_epoch or is_last_epoch:
                     performance_tracker = performance_tracker_reusable
                     performance_tracker.reset()
 
@@ -245,30 +257,49 @@ class Run:
                     # Update our checkpoint in S3 and DDB
                     self.set_restore_point(epoch)
 
-                if not is_metrics_epoch:
-                    # if it's not a metrics epoch, we don't need to do validation.  Continue to the next epoch.
-                    continue
+                if is_metrics_epoch or is_last_epoch:
+                    # Do an inference run on the validation dataset if this is a metrics epoch, or if it's the last epoch.
+                    # In the case of the last epoch, we also want to include an ErrorTracker to produce error analysis data.
+                    print("Validating model...")
+                    performance_tracker.reset()
+                    if is_last_epoch:
+                        print("Including ErrorTracker for last epoch.")
+                        error_tracker = ErrorTracker(
+                            num_classes=len(self.validation_dataset.answer_classes),
+                            max_samples_per_class=50,
+                            track_true_negatives=False,
+                            topk = 5,
+                            topk_as_positive=False)
 
-                print("Validating model...")
-                performance_tracker.reset()
-                model_tester.test(self.model, performance_tracker, None, self.device, self.no_progress_bar)
+                    model_tester.test(self.model, performance_tracker, error_tracker, self.device, self.no_progress_bar)
 
-                # Print performance report
-                performance_tracker.print_report()
+                    # Print performance report
+                    performance_tracker.print_report()
 
-                # store metrics
-                validation_metrics_manager.store_performance_metrics(self.config.model_name, self.validation_dataset_type, epoch, performance_tracker.get_metrics(), True, self.run_id)
+                    # store metrics
+                    validation_metrics_manager.store_performance_metrics(self.config.model_name, self.validation_dataset_type, epoch, performance_tracker.get_metrics(), True, self.run_id)
+
+                    # if error tracker is set, store the results out to a json file
+                    if error_tracker:
+                        error_analysis_data = error_tracker.get_instance_data()
+                        # dump error analysis data to a tmp file and then upload to S3
+                        with tempfile.NamedTemporaryFile('w') as f:
+                            json.dump(error_analysis_data, f)
+                            f.flush()
+                            s3_object_key = f"error_analysis/{self.run_id}/{self.validation_dataset_type}/epoch_{epoch}.json"
+                            error_analysis_s3_url = f"s3://{S3Helper.BACKEND_BUCKET}/{s3_object_key}"
+                            self.s3_helper.upload_file(S3Helper.BACKEND_BUCKET, s3_object_key, f.name)
 
         except KeyboardInterrupt:
             print("KeyboardInterrupt detected. Ending the training...")
-            self._mark_run_finished('USER_ABORTED')
+            self._mark_run_finished('USER_ABORTED', error_analysis_s3_url)
             print("Run aborted by user.")
             exit(0)
 
         if not is_snapshot_epoch:
             # the last epoch wasn't a snapshot epoch.  take a final snapshot since we're done training.
             self.set_restore_point(epoch)
-        self._mark_run_finished('FINISHED')
+        self._mark_run_finished('FINISHED', error_analysis_s3_url)
         print("Run complete.")
 
 if __name__ == "__main__":
