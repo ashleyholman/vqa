@@ -5,6 +5,9 @@ from torch.utils.data import DataLoader
 
 from torch.nn.functional import cross_entropy
 
+from src.metrics.error_tracker import ErrorTracker
+from src.metrics.performance_tracker import PerformanceTracker
+
 class ModelTester:
     def __init__(self, config, dataset, num_dataloader_workers):
         self.config = config
@@ -13,7 +16,7 @@ class ModelTester:
         # Create a DataLoader to handle batching of the dataset
         self.dataloader = DataLoader(dataset, batch_size=config.batch_size, num_workers=num_dataloader_workers, shuffle=config.shuffle)
 
-    def test(self, model, performance_tracker, device, no_progress_bar=False):
+    def test(self, model, performance_tracker: PerformanceTracker, error_tracker: ErrorTracker, device, no_progress_bar=False):
         # Move model to evaluation mode
         model.eval()
 
@@ -39,5 +42,10 @@ class ModelTester:
                 # Update the performance tracker
                 if performance_tracker:
                     performance_tracker.update_metrics(logits, labels, loss.item())
+
+                # Update error tracker
+                if error_tracker:
+                    error_tracker.update_instance_data(logits, labels, batch["question_id"])
+
                 if idx % 500 == 0:
                     print(f"\nBatch {idx}..")

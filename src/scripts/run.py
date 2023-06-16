@@ -251,7 +251,7 @@ class Run:
 
                 print("Validating model...")
                 performance_tracker.reset()
-                model_tester.test(self.model, performance_tracker, self.device, self.no_progress_bar)
+                model_tester.test(self.model, performance_tracker, None, self.device, self.no_progress_bar)
 
                 # Print performance report
                 performance_tracker.print_report()
