@@ -11,7 +11,7 @@ function RunDetails() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const response = await fetch(`/data/run_${runId}.json`);
+        const response = await fetch(`/data/run/${runId}/main.json`);
         const data = await response.json();
         setRunData(data);
       } catch (error) {
