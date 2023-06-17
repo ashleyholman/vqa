@@ -209,6 +209,12 @@ class Run:
             # epoch's are 1-indexed for ease of understanding by the user
             start_epoch = 1
 
+            # for a new run, store the answer_classes in the run record
+            column_values = {
+                'answer_classes': self.training_dataset.answer_classes
+            }
+            self.run_manager.update_run(self.run_id, column_values)
+
         print("Model architecture: ")
         print(self.model)
 
