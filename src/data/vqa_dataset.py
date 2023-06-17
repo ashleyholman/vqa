@@ -9,27 +9,28 @@ from PIL import Image
 import numpy as np
 from functools import lru_cache
 
-DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), '../../data')
-
-VIT_MODEL_NAME = "google/vit-base-patch16-224-in21k"  # name of the ViT model
-BERT_MODEL_NAME = "bert-base-uncased"
-
-# Training data set
-TRAIN_ANNOTATIONS_JSON_FILE_NAME = 'data/v2_mscoco_train2014_annotations.json'
-TRAIN_QUESTIONS_JSON_FILE_NAME = 'data/v2_OpenEnded_mscoco_train2014_questions.json'
-TRAIN_IMAGE_PREFIX = 'data/train2014/COCO_train2014_'
-
-# Validation data set
-VALIDATION_ANNOTATIONS_JSON_FILE_NAME = 'data/v2_mscoco_val2014_annotations.json'
-VALIDATION_QUESTIONS_JSON_FILE_NAME = 'data/v2_OpenEnded_mscoco_val2014_questions.json'
-VALIDATION_IMAGE_PREFIX = 'data/val2014/COCO_val2014_'
-
-# Mini data set (tiny subset of training data, for testing code locally)
-MINI_ANNOTATIONS_JSON_FILE_NAME = 'data/subset_annotations.json'
-MINI_QUESTIONS_JSON_FILE_NAME = 'data/subset_questions.json'
-MINI_IMAGE_PREFIX = 'data/train2014/COCO_train2014_'
 
 class VQADataset(Dataset):
+    DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), '../../data')
+
+    VIT_MODEL_NAME = "google/vit-base-patch16-224-in21k"  # name of the ViT model
+    BERT_MODEL_NAME = "bert-base-uncased"
+
+    # Training data set
+    TRAIN_ANNOTATIONS_JSON_FILE_NAME = 'data/v2_mscoco_train2014_annotations.json'
+    TRAIN_QUESTIONS_JSON_FILE_NAME = 'data/v2_OpenEnded_mscoco_train2014_questions.json'
+    TRAIN_IMAGE_PREFIX = 'data/train2014/COCO_train2014_'
+
+    # Validation data set
+    VALIDATION_ANNOTATIONS_JSON_FILE_NAME = 'data/v2_mscoco_val2014_annotations.json'
+    VALIDATION_QUESTIONS_JSON_FILE_NAME = 'data/v2_OpenEnded_mscoco_val2014_questions.json'
+    VALIDATION_IMAGE_PREFIX = 'data/val2014/COCO_val2014_'
+
+    # Mini data set (tiny subset of training data, for testing code locally)
+    MINI_ANNOTATIONS_JSON_FILE_NAME = 'data/subset_annotations.json'
+    MINI_QUESTIONS_JSON_FILE_NAME = 'data/subset_questions.json'
+    MINI_IMAGE_PREFIX = 'data/train2014/COCO_train2014_'
+
     def __init__(self, settype='train', answer_classes=[], with_input_ids=False, with_images_features=False):
         self.images = []
         self.input_ids = []
@@ -46,21 +47,21 @@ class VQADataset(Dataset):
         self.with_images_features = with_images_features
         self.embeddings_loaded = False
 
-        self.bert_tokenizer = BertTokenizer.from_pretrained(BERT_MODEL_NAME)
-        self.vit_preprocessor = ViTImageProcessor.from_pretrained(VIT_MODEL_NAME)
+        self.bert_tokenizer = BertTokenizer.from_pretrained(self.BERT_MODEL_NAME)
+        self.vit_preprocessor = ViTImageProcessor.from_pretrained(self.VIT_MODEL_NAME)
 
         if settype == 'train':
-          annotations_json_file = TRAIN_ANNOTATIONS_JSON_FILE_NAME
-          questions_json_file = TRAIN_QUESTIONS_JSON_FILE_NAME
-          self.image_prefix = TRAIN_IMAGE_PREFIX
+          annotations_json_file = self.TRAIN_ANNOTATIONS_JSON_FILE_NAME
+          questions_json_file = self.TRAIN_QUESTIONS_JSON_FILE_NAME
+          self.image_prefix = self.TRAIN_IMAGE_PREFIX
         elif settype == 'validation':
-          annotations_json_file = VALIDATION_ANNOTATIONS_JSON_FILE_NAME
-          questions_json_file = VALIDATION_QUESTIONS_JSON_FILE_NAME
-          self.image_prefix = VALIDATION_IMAGE_PREFIX
+          annotations_json_file = self.VALIDATION_ANNOTATIONS_JSON_FILE_NAME
+          questions_json_file = self.VALIDATION_QUESTIONS_JSON_FILE_NAME
+          self.image_prefix = self.VALIDATION_IMAGE_PREFIX
         elif settype == 'mini':
-          annotations_json_file = MINI_ANNOTATIONS_JSON_FILE_NAME
-          questions_json_file = MINI_QUESTIONS_JSON_FILE_NAME
-          self.image_prefix = MINI_IMAGE_PREFIX
+          annotations_json_file = self.MINI_ANNOTATIONS_JSON_FILE_NAME
+          questions_json_file = self.MINI_QUESTIONS_JSON_FILE_NAME
+          self.image_prefix = self.MINI_IMAGE_PREFIX
         else:
           raise ValueError("Unknown set type: " + settype)
 
@@ -176,7 +177,7 @@ class VQADataset(Dataset):
 
     def _load_embeddings(self):
         settype = self.settype
-        save_path = os.path.join(DATA_DIR, f'{settype}_embeddings.pt')
+        save_path = os.path.join(self.DATA_DIR, f'{settype}_embeddings.pt')
 
         embeddings = torch.load(save_path)
 
@@ -192,8 +193,8 @@ class VQADataset(Dataset):
         device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
         # Move both models to GPU if available
-        image_model = ViTModel.from_pretrained(VIT_MODEL_NAME).to(device)
-        text_model = BertModel.from_pretrained(BERT_MODEL_NAME).to(device)
+        image_model = ViTModel.from_pretrained(self.VIT_MODEL_NAME).to(device)
+        text_model = BertModel.from_pretrained(self.BERT_MODEL_NAME).to(device)
 
         all_image_embeddings = []
         all_text_embeddings = []
@@ -221,7 +222,7 @@ class VQADataset(Dataset):
         all_text_embeddings = torch.cat(all_text_embeddings)
         print(f'Finished processing {len(all_image_embeddings)} images and questions...')
 
-        save_path = os.path.join(DATA_DIR, f'{self.settype}_embeddings.pt')
+        save_path = os.path.join(self.DATA_DIR, f'{self.settype}_embeddings.pt')
 
         torch.save({
             'image_embeddings': all_image_embeddings,
