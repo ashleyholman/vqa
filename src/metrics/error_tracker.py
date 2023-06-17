@@ -64,7 +64,10 @@ class ErrorTracker:
                         self._add_to_class_data(class_id, 'TN', data)
 
     def get_instance_data(self):
-        return self.instance_data_per_class, self.error_count_per_class
+        return {
+            'sample_questions' : self.instance_data_per_class,
+            'counts' : self.error_count_per_class
+        }
 
     def reset(self):
         self.instance_data_per_class = {
