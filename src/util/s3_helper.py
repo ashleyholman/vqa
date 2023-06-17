@@ -1,3 +1,4 @@
+from urllib.parse import urlparse
 import boto3
 
 class S3Helper:
@@ -50,3 +51,19 @@ class S3Helper:
         except Exception as e:
             print(f"Failed to upload file: {e}")
             raise e
+
+    def download_file_from_url(self, url, filename):
+        parsed_url = urlparse(url)
+
+        # Check if the protocol is 's3'
+        if parsed_url.scheme != 's3':
+            raise ValueError(f"Protocol {parsed_url.scheme} is not allowed. Only 's3' is allowed.")
+
+        bucket_name = parsed_url.netloc
+        key = parsed_url.path.lstrip('/')
+
+        # Ensure the bucket is either BACKEND_BUCKET or FRONTEND_BUCKET
+        if bucket_name not in [self.BACKEND_BUCKET, self.FRONTEND_BUCKET]:
+            raise ValueError(f"Bucket {bucket_name} is not allowed")
+
+        self.download_file(bucket_name, key, filename)
