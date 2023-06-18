@@ -24,6 +24,21 @@ function AnswerClassSampleCategoryViewer({ runId, classId, categoryType, sampleQ
     setImageLoading(false);
   };
 
+  const formatImageId = (id) => {
+    return String(id).padStart(12, '0');
+  }
+
+  const imageUrl = `${process.env.REACT_APP_COCO_IMAGE_HOST}/val2014/COCO_val2014_${formatImageId(currentSampleQuestion.image_id)}.jpg`
+  const imageRef = React.useRef(null);
+
+  React.useEffect(() => {
+    setImageLoading(true);
+    const img = new Image();
+    img.src = imageUrl;
+    img.onload = () => setImageLoading(false);
+    img.onerror = () => setImageLoading(false);
+  }, [imageUrl]);
+
   if (sampleQuestions.length === 0) {
     return <div>No data</div>;
   }
@@ -31,12 +46,6 @@ function AnswerClassSampleCategoryViewer({ runId, classId, categoryType, sampleQ
   if (!isErrorAnalysisSummaryDataLoaded) {
     return <div>Loading...</div>;
   }
-
-  const formatImageId = (id) => {
-    return String(id).padStart(12, '0');
-  }
-
-  const imageUrl = `${process.env.REACT_APP_COCO_IMAGE_HOST}/val2014/COCO_val2014_${formatImageId(currentSampleQuestion.image_id)}.jpg`
 
   return (
     <div>
@@ -52,9 +61,9 @@ function AnswerClassSampleCategoryViewer({ runId, classId, categoryType, sampleQ
         </div>
       }
       <img
+        ref={imageRef}
         src={imageUrl}
         alt="vqa_image"
-        onLoad={handleImageLoad}
         className={`image-content ${isImageLoading ? 'hidden' : ''}`}
       />
       <h3>Predictions</h3>
