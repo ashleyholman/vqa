@@ -140,6 +140,7 @@ class GraphGenerator():
                     new_key = 'final_' + key.split(metrics_prefix)[1]
                     index_entry[new_key] = value
 
+            has_error_analysis = False
             # check for existance of error analysis data in run record
             if 'error_analysis_s3_url' in run and 'answer_classes' in run:
                 output_dir = f"{run_web_dir}/error_analysis"
@@ -156,8 +157,9 @@ class GraphGenerator():
                         with open(temp_json_file.name, 'r') as f:
                             error_analysis_data = json.load(f)
                             self.generate_error_analysis_json_for_web(run, error_analysis_data, output_dir)
-                            index_entry['has_error_analysis'] = True
+                has_error_analysis = True
 
+            index_entry['has_error_analysis'] = has_error_analysis
             index_metadata.append(index_entry)
 
             # now generate the main JSON file for this run (contains config and metrics)
@@ -169,6 +171,7 @@ class GraphGenerator():
                 data = { 'run_id': run_id, 'config': json.loads(run.get('config', '{}')) }
                 data['validation_dataset_type'] = run['validation_dataset_type']
                 data['metrics'] = metrics
+                data['has_error_analysis'] = has_error_analysis
                 with open(main_json_file, 'w') as f:
                     json.dump(data, f, default=lambda obj: float(obj) if isinstance(obj, decimal.Decimal) else TypeError, indent=4)
                 print(f"Generated main JSON file for run: {run_id} to outfile {main_json_file}")
