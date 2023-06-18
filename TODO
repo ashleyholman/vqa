@@ -8,9 +8,11 @@
   can just refresh my web browser to see the results.
 - Check cosine similarity between raw answer embeddings to confirm clustering
   hypothesis
-- run.py: Catch keyboard interrupt, set run status to USER_ABORTED
 - React app:
-  * Add tabs on RunDetails page:
-    * performance charts
-    * error analysis
-  * Visualise N correct answers, N wrong answers?
+  * Error Analysis page: Add statistics for each class, like accuracy, total
+    true answers, etc.
+  * Sample questions page:
+    * show totals for true positive, false positive etc
+    * add lightbox image display for larger view (try react-image-lightbox)
+  * Add confusion matrix
+  * When mousing over tables, highlight the row
