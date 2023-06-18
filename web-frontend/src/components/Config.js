@@ -2,6 +2,10 @@ import React from 'react';
 import './Config.css';
 
 function Config({ configData }) {
+  if (!configData) {
+    return <div>Loading...</div>;
+  }
+
   return (
     <div className="config-container">
       {Object.entries(configData).map(([key, value], idx) => {

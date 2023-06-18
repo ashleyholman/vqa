@@ -1,0 +1,14 @@
+.correct-answer {
+  color: rgb(0, 210, 0);
+}
+
+.wrong-answer {
+  color: rgb(210, 0, 0);
+}
+
+.first-answer {
+  font-size: 1.2em;
+  font-weight: bold;
+  background: rgba(0, 0, 0, 0.1);
+  padding: 5px;
+}

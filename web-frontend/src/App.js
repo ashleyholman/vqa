@@ -38,7 +38,7 @@ function App() {
       <Breadcrumbs />
       <Routes>
         <Route path="/" element={<Table data={data} />} />
-        <Route path="/run/:runId" element={<RunDetails />} />
+        <Route path="/run/:runId/*" element={<RunDetails />} />
       </Routes>
     </div>
   );
