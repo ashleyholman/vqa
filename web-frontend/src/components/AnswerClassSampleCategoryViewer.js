@@ -1,22 +1,20 @@
-import React, { useState } from 'react';
+import React from 'react';
+import { useLocation, Link } from 'react-router-dom';
 import './AnswerClassSampleCategoryViewer.css';
 
-function AnswerClassSampleCategoryViewer({ title, sampleQuestions, errorAnalysisSummaryData }) {
-  const [currentIndex, setCurrentIndex] = useState(0);
+function AnswerClassSampleCategoryViewer({ runId, classId, categoryType, sampleQuestions, errorAnalysisSummaryData }) {
+  const location = useLocation();
+  const pathParts = location.pathname.split('/').filter(Boolean);
+  const currentIndex = pathParts.length > 5 ? Number(pathParts[5]) : 0;
+
+  const nextIndex = (currentIndex + 1) % sampleQuestions.length;
+  const prevIndex = (currentIndex - 1 + sampleQuestions.length) % sampleQuestions.length;
 
   if (sampleQuestions.length === 0) {
     return <div>No data</div>;
   }
 
   const currentSampleQuestion = sampleQuestions[currentIndex];
-
-  const handleNext = () => {
-    setCurrentIndex((currentIndex + 1) % sampleQuestions.length);
-  }
-
-  const handlePrev = () => {
-    setCurrentIndex((currentIndex - 1 + sampleQuestions.length) % sampleQuestions.length);
-  }
 
   const formatImageId = (id) => {
     return String(id).padStart(12, '0');
@@ -26,6 +24,11 @@ function AnswerClassSampleCategoryViewer({ title, sampleQuestions, errorAnalysis
 
   return (
     <div>
+      <div id="prev-next-links">
+        <Link to={`/run/${runId}/error_analysis/${classId}/${categoryType}/${prevIndex}`}>{' << '} Previous</Link>{' '}
+        <span>{currentIndex + 1} / {sampleQuestions.length}</span>{' '}
+        <Link to={`/run/${runId}/error_analysis/${classId}/${categoryType}/${nextIndex}`}>Next {' >> '}</Link>
+      </div>
       <h2>{currentSampleQuestion.question_text}</h2>
       <img src={imageUrl} alt="vqa_image" />
       <h3>Predictions</h3>
@@ -37,8 +40,6 @@ function AnswerClassSampleCategoryViewer({ title, sampleQuestions, errorAnalysis
         ))}
       </ol>
       <h3>Correct answer: {errorAnalysisSummaryData[currentSampleQuestion.true_class].class_label}</h3>
-      <button onClick={handlePrev}>Previous</button>
-      <button onClick={handleNext}>Next</button>
     </div>
   );
 }

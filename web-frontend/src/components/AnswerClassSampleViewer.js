@@ -25,8 +25,6 @@ function AnswerClassSampleViewer({ runId, errorAnalysisSummaryData}) {
   useEffect(() => {
     const pathParts = location.pathname.split('/').filter(Boolean);
 
-    console.log("pathParts: ", pathParts)
-
     if (pathParts.length > 4) {
       const fifthPart = pathParts[4];
 
@@ -62,10 +60,10 @@ function AnswerClassSampleViewer({ runId, errorAnalysisSummaryData}) {
   }
 
   let element = useRoutes([
-    { path: '', element: <AnswerClassSampleCategoryViewer title='True Positives' sampleQuestions={tp_data} errorAnalysisSummaryData={errorAnalysisSummaryData}/> },
-    { path: 'tp', element: <AnswerClassSampleCategoryViewer title='True Positives' sampleQuestions={tp_data} errorAnalysisSummaryData={errorAnalysisSummaryData}/> },
-    { path: 'fp', element: <AnswerClassSampleCategoryViewer title='False Positives' sampleQuestions={fp_data} errorAnalysisSummaryData={errorAnalysisSummaryData}/> },
-    { path: 'fn', element: <AnswerClassSampleCategoryViewer title='False Negatives' sampleQuestions={fn_data} errorAnalysisSummaryData={errorAnalysisSummaryData}/> }
+    { path: '', element: <AnswerClassSampleCategoryViewer categoryType='tp' sampleQuestions={tp_data} errorAnalysisSummaryData={errorAnalysisSummaryData} runId={runId} classId={classId}/> },
+    { path: 'tp/*', element: <AnswerClassSampleCategoryViewer categoryType='tp' sampleQuestions={tp_data} errorAnalysisSummaryData={errorAnalysisSummaryData} runId={runId} classId={classId}/> },
+    { path: 'fp/*', element: <AnswerClassSampleCategoryViewer categoryType='fp' sampleQuestions={fp_data} errorAnalysisSummaryData={errorAnalysisSummaryData} runId={runId} classId={classId}/> },
+    { path: 'fn/*', element: <AnswerClassSampleCategoryViewer categoryType='fn' sampleQuestions={fn_data} errorAnalysisSummaryData={errorAnalysisSummaryData} runId={runId} classId={classId}/> }
   ]);
 
   if (!sampleQuestionData) {

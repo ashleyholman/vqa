@@ -12,3 +12,9 @@
   background: rgba(0, 0, 0, 0.1);
   padding: 5px;
 }
+
+.prev-next-links {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 20px;
+}
