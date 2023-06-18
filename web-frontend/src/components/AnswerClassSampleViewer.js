@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useParams, useRoutes } from 'react-router-dom';
-import './ErrorAnalysisTable.css';
 import AnswerClassSampleCategoryViewer from './AnswerClassSampleCategoryViewer.js'
 
 function AnswerClassSampleViewer({ runId, errorAnalysisSummaryData}) {

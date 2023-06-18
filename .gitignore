@@ -12,3 +12,5 @@ __pycache__/
 /web-frontend/.env
 /web-frontend/build/
 /web-frontend/public/data/
+/web-frontend/.env.development
+.DS_Store

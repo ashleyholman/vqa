@@ -22,7 +22,7 @@ function AnswerClassSampleCategoryViewer({ title, sampleQuestions, errorAnalysis
     return String(id).padStart(12, '0');
   }
 
-  const imageUrl = `${process.env.REACT_APP_BASE_URL}/static/media/vqa-validation-images/COCO_val2014_${formatImageId(currentSampleQuestion.image_id)}.jpg`
+  const imageUrl = `${process.env.REACT_APP_COCO_IMAGE_HOST}/static/media/vqa-validation-images/COCO_val2014_${formatImageId(currentSampleQuestion.image_id)}.jpg`
 
   return (
     <div>

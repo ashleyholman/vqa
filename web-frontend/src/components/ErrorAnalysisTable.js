@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import './ErrorAnalysisTable.css';
 
 function ErrorAnalysisTable({ runId, errorAnalysisSummaryData }) {
   if (!errorAnalysisSummaryData) {
