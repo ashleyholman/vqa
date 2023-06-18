@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useParams, useRoutes } from 'react-router-dom';
 import Config from './Config';
+import { ErrorAnalysisContext } from '../contexts/ErrorAnalysisContext.js';
+
 import AnswerClassSampleViewer from './AnswerClassSampleViewer.js';
 import ErrorAnalysisTable from './ErrorAnalysisTable.js';
 import MetricsChartGrid from './MetricsChartGrid.js';
@@ -9,7 +11,7 @@ import './RunDetails.css';
 function RunDetails() {
   const { runId } = useParams();
   const [runData, setRunData] = useState(null);
-  const [errorAnalysisSummaryData, setErrorAnalysisSummaryData] = useState(null);
+  const { setIsErrorAnalysisSummaryDataLoaded, setErrorAnalysisSummaryData } = React.useContext(ErrorAnalysisContext);
   const [tab, setTab] = useState('charts');
   const location = useLocation();
 
@@ -25,6 +27,7 @@ function RunDetails() {
           const responseErrorAnalysis = await fetch(`/data/run/${runId}/error_analysis/summary.json`);
           const summaryData = await responseErrorAnalysis.json();
           setErrorAnalysisSummaryData(summaryData);
+          setIsErrorAnalysisSummaryDataLoaded(true);
         } else {
           console.log("NOT fetching error analysis data for this run")
         }
@@ -76,8 +79,8 @@ function RunDetails() {
     { path: '', element: <MetricsChartGrid metrics={metrics} isMiniRun={isMiniRun} /> },
     { path: 'config', element: <Config configData={config} /> },
     { path: 'charts', element: <MetricsChartGrid metrics={metrics} isMiniRun={isMiniRun} /> },
-    { path: 'error_analysis', element: <ErrorAnalysisTable runId={runId} errorAnalysisSummaryData={errorAnalysisSummaryData}/> },
-    { path: 'error_analysis/:classId/*', element: <AnswerClassSampleViewer runId={runId} errorAnalysisSummaryData={errorAnalysisSummaryData}/> }
+    { path: 'error_analysis', element: <ErrorAnalysisTable runId={runId} /> },
+    { path: 'error_analysis/:classId/*', element: <AnswerClassSampleViewer runId={runId} /> }
   ]);
 
   if (!runData) {

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useParams, useRoutes } from 'react-router-dom';
 import AnswerClassSampleCategoryViewer from './AnswerClassSampleCategoryViewer.js'
 
-function AnswerClassSampleViewer({ runId, errorAnalysisSummaryData}) {
+function AnswerClassSampleViewer({ runId }) {
   const [sampleQuestionData, setSampleQuestionData] = useState(null);
   const { classId } = useParams();
   const [tab, setTab] = useState('tp');
@@ -20,50 +20,28 @@ function AnswerClassSampleViewer({ runId, errorAnalysisSummaryData}) {
     };
 
     fetchData();
-  }, [runId]);
+  }, [runId, classId]);
 
   useEffect(() => {
     const pathParts = location.pathname.split('/').filter(Boolean);
-
-    if (pathParts.length > 4) {
-      const fifthPart = pathParts[4];
-
-      switch(fifthPart) {
-        case 'tp':
-          setTab('tp');
-          break;
-        case 'fp':
-          setTab('fp');
-          break;
-        case 'fn':
-          setTab('fn');
-          break;
-        case 'tn':
-          setTab('tn');
-          break;
-        default:
-          setTab('tp');
-      }
-    } else {
-      setTab('tp');
-    }
+    const fifthPart = pathParts.length > 4 ? pathParts[4] : 'tp';
+    setTab(['tp', 'fp', 'fn', 'tn'].includes(fifthPart) ? fifthPart : 'tp');
   }, [location]);
 
-  let tp_data = null;
-  let fp_data = null;
-  let fn_data = null;
+  const getData = (category) => sampleQuestionData && sampleQuestionData[category.toUpperCase()]['sample_questions'];
 
-  if (sampleQuestionData) {
-    tp_data = sampleQuestionData['TP']['sample_questions'];
-    fp_data = sampleQuestionData['FP']['sample_questions'];
-    fn_data = sampleQuestionData['FN']['sample_questions'];
+  const categories = {
+    'tp' : "True Positives",
+    'fp' : "False Positives",
+    'fn' : "False Negatives"
   }
 
-  let element = useRoutes([
-    { path: '', element: <AnswerClassSampleCategoryViewer categoryType='tp' sampleQuestions={tp_data} errorAnalysisSummaryData={errorAnalysisSummaryData} runId={runId} classId={classId}/> },
-    { path: 'tp/*', element: <AnswerClassSampleCategoryViewer categoryType='tp' sampleQuestions={tp_data} errorAnalysisSummaryData={errorAnalysisSummaryData} runId={runId} classId={classId}/> },
-    { path: 'fp/*', element: <AnswerClassSampleCategoryViewer categoryType='fp' sampleQuestions={fp_data} errorAnalysisSummaryData={errorAnalysisSummaryData} runId={runId} classId={classId}/> },
-    { path: 'fn/*', element: <AnswerClassSampleCategoryViewer categoryType='fn' sampleQuestions={fn_data} errorAnalysisSummaryData={errorAnalysisSummaryData} runId={runId} classId={classId}/> }
+  const elements = useRoutes([
+    { path: '', element: <AnswerClassSampleCategoryViewer categoryType='tp' sampleQuestions={getData('tp')} runId={runId} classId={classId}/> },
+    ...Object.keys(categories).map((category) => ({
+      path: `${category}/*`,
+      element: <AnswerClassSampleCategoryViewer categoryType={category} sampleQuestions={getData(category)} runId={runId} classId={classId}/>
+    }))
   ]);
 
   if (!sampleQuestionData) {
@@ -71,15 +49,21 @@ function AnswerClassSampleViewer({ runId, errorAnalysisSummaryData}) {
   }
 
   return (
-    <div class="answer-class-viewer">
-      <div class="answer-class-viewer-header">
+    <div className="answer-class-viewer">
+      <div className="answer-class-viewer-header">
         <div className="tab-bar">
-          <Link to={`/run/${runId}/error_analysis/${classId}/tp`} className={tab === 'tp' ? 'active-tab' : ''} onClick={(e) => {setTab('tp')}}>True Positives ({`${tp_data.length}`})</Link>
-          <Link to={`/run/${runId}/error_analysis/${classId}/fp`} className={tab === 'fp' ? 'active-tab' : ''} onClick={(e) => {setTab('fp')}}>False Positives ({`${fp_data.length}`})</Link>
-          <Link to={`/run/${runId}/error_analysis/${classId}/fn`} className={tab === 'fn' ? 'active-tab' : ''} onClick={(e) => {setTab('fn')}}>False Negatives ({`${fn_data.length}`})</Link>
+          {Object.entries(categories).map(([category, description]) => (
+            <Link
+              key={category}
+              to={`/run/${runId}/error_analysis/${classId}/${category}`}
+              className={tab === category ? 'active-tab' : ''}
+              onClick={() => setTab(category)}>
+              {`${description}`} ({getData(category)?.length})
+            </Link>
+          ))}
         </div>
       </div>
-      {element}
+      {elements}
     </div>
   );
 }

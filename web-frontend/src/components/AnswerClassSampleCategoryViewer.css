@@ -18,3 +18,21 @@
   justify-content: space-between;
   margin-top: 20px;
 }
+
+.image-loading {
+  display: flex;
+  justify-content: left;
+  align-items: center;
+  height: 40vh;
+  padding-left: 100px;
+}
+
+.image-content {
+  height: 40vh;
+  width: auto;
+  object-fit: contain;
+}
+
+.hidden {
+  display: none;
+}

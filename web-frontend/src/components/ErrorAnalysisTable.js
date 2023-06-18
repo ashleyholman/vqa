@@ -1,8 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { ErrorAnalysisContext } from '../contexts/ErrorAnalysisContext.js'; // import your ErrorAnalysisContext
 
-function ErrorAnalysisTable({ runId, errorAnalysisSummaryData }) {
-  if (!errorAnalysisSummaryData) {
+function ErrorAnalysisTable({ runId }) {
+  const { errorAnalysisSummaryData, isErrorAnalysisSummaryDataLoaded } = React.useContext(ErrorAnalysisContext); // access the data and the flag via context
+
+  if (!isErrorAnalysisSummaryDataLoaded) {
     return <div>Loading error analysis data...</div>;
   }
 

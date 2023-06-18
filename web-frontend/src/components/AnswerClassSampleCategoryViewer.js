@@ -1,8 +1,12 @@
 import React from 'react';
 import { useLocation, Link } from 'react-router-dom';
+import { ThreeDots } from 'react-loader-spinner';
 import './AnswerClassSampleCategoryViewer.css';
+import { ErrorAnalysisContext } from '../contexts/ErrorAnalysisContext.js';
 
-function AnswerClassSampleCategoryViewer({ runId, classId, categoryType, sampleQuestions, errorAnalysisSummaryData }) {
+function AnswerClassSampleCategoryViewer({ runId, classId, categoryType, sampleQuestions }) {
+  const { errorAnalysisSummaryData, isErrorAnalysisSummaryDataLoaded } = React.useContext(ErrorAnalysisContext);
+  const [isImageLoading, setImageLoading] = React.useState(true);
   const location = useLocation();
   const pathParts = location.pathname.split('/').filter(Boolean);
   const currentIndex = pathParts.length > 5 ? Number(pathParts[5]) : 0;
@@ -10,11 +14,23 @@ function AnswerClassSampleCategoryViewer({ runId, classId, categoryType, sampleQ
   const nextIndex = (currentIndex + 1) % sampleQuestions.length;
   const prevIndex = (currentIndex - 1 + sampleQuestions.length) % sampleQuestions.length;
 
+  const currentSampleQuestion = sampleQuestions.length > 0 ? sampleQuestions[currentIndex] : null
+
+  React.useEffect(() => {
+    setImageLoading(true);
+  }, [currentSampleQuestion]);
+
+  const handleImageLoad = () => {
+    setImageLoading(false);
+  };
+
   if (sampleQuestions.length === 0) {
     return <div>No data</div>;
   }
 
-  const currentSampleQuestion = sampleQuestions[currentIndex];
+  if (!isErrorAnalysisSummaryDataLoaded) {
+    return <div>Loading...</div>;
+  }
 
   const formatImageId = (id) => {
     return String(id).padStart(12, '0');
@@ -30,7 +46,17 @@ function AnswerClassSampleCategoryViewer({ runId, classId, categoryType, sampleQ
         <Link to={`/run/${runId}/error_analysis/${classId}/${categoryType}/${nextIndex}`}>Next {' >> '}</Link>
       </div>
       <h2>{currentSampleQuestion.question_text}</h2>
-      <img src={imageUrl} alt="vqa_image" />
+      {isImageLoading &&
+        <div className="image-loading">
+          <ThreeDots color="#ffffff" height={50} width={50} />
+        </div>
+      }
+      <img
+        src={imageUrl}
+        alt="vqa_image"
+        onLoad={handleImageLoad}
+        className={`image-content ${isImageLoading ? 'hidden' : ''}`}
+      />
       <h3>Predictions</h3>
       <ol>
         {currentSampleQuestion.predicted_classes.map((predicted_class, index) => (

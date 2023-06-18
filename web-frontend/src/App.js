@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Routes, Route } from 'react-router-dom';
+import { ErrorAnalysisProvider } from './contexts/ErrorAnalysisContext';
 
 import Breadcrumbs from './components/Breadcrumbs';
 import Header from './components/Header';
@@ -34,12 +35,14 @@ function App() {
 
   return (
     <div className="App">
-      <Header />
-      <Breadcrumbs />
-      <Routes>
-        <Route path="/" element={<Table data={data} />} />
-        <Route path="/run/:runId/*" element={<RunDetails />} />
-      </Routes>
+      <ErrorAnalysisProvider>
+        <Header />
+        <Breadcrumbs />
+        <Routes>
+          <Route path="/" element={<Table data={data} />} />
+          <Route path="/run/:runId/*" element={<RunDetails />} />
+        </Routes>
+      </ErrorAnalysisProvider>
     </div>
   );
 }

@@ -1,9 +1,16 @@
+import React from 'react';
 import { useLocation } from 'react-router-dom';
 import { Link } from 'react-router-dom';
+import { ErrorAnalysisContext } from '../contexts/ErrorAnalysisContext.js';
 
 function Breadcrumbs() {
   const location = useLocation();
   const pathParts = location.pathname.split('/').filter(Boolean);
+  const { errorAnalysisSummaryData, isErrorAnalysisSummaryDataLoaded } = React.useContext(ErrorAnalysisContext);
+
+  if (!isErrorAnalysisSummaryDataLoaded) {
+    return <div>Loading...</div>;
+  }
 
   let breadcrumbs = null;
 
@@ -39,10 +46,11 @@ function Breadcrumbs() {
       );
       if (pathParts.length >= 4) {
         const classId = pathParts[3];
+        const className = errorAnalysisSummaryData[classId]?.class_label ? `Class "${errorAnalysisSummaryData[classId].class_label}"` : `Class ${classId}`;
         breadcrumbs = (
           <>
             {breadcrumbs}{' -> '}
-            <Link to={`/run/${runId}/error_analysis/${classId}`} style={{ color: '#00A878', fontWeight: 'bold' }}>Class {classId}</Link>
+            <Link to={`/run/${runId}/error_analysis/${classId}`} style={{ color: '#00A878', fontWeight: 'bold' }}>{className}</Link>
           </>
         );
         if (pathParts.length >= 5) {
