@@ -1,6 +1,8 @@
 import React from 'react';
-import { useLocation, Link } from 'react-router-dom';
+import { useLocation, useNavigate, Link } from 'react-router-dom';
 import { ThreeDots } from 'react-loader-spinner';
+import ModalImage from 'react-modal-image';
+
 import './AnswerClassSampleCategoryViewer.css';
 import { ErrorAnalysisContext } from '../contexts/ErrorAnalysisContext.js';
 
@@ -10,6 +12,7 @@ function AnswerClassSampleCategoryViewer({ runId, classId, categoryType, sampleQ
   const location = useLocation();
   const pathParts = location.pathname.split('/').filter(Boolean);
   const currentIndex = pathParts.length > 5 ? Number(pathParts[5]) : 0;
+  const navigate = useNavigate();
 
   const nextIndex = (currentIndex + 1) % sampleQuestions.length;
   const prevIndex = (currentIndex - 1 + sampleQuestions.length) % sampleQuestions.length;
@@ -24,12 +27,39 @@ function AnswerClassSampleCategoryViewer({ runId, classId, categoryType, sampleQ
     setImageLoading(false);
   };
 
+    // Add useEffect hook for keyboard navigation
+    React.useEffect(() => {
+      function handleKeyDown(e) {
+          switch (e.key) {
+              case 'ArrowRight':
+                  navigate(`/run/${runId}/error_analysis/${classId}/${categoryType}/${nextIndex}`);
+                  break;
+              case 'ArrowLeft':
+                  navigate(`/run/${runId}/error_analysis/${classId}/${categoryType}/${prevIndex}`);
+                  break;
+              default:
+                  break;
+          }
+      }
+      window.addEventListener('keydown', handleKeyDown);
+
+      return () => {
+          window.removeEventListener('keydown', handleKeyDown);
+      }
+  }, [navigate, runId, classId, categoryType, nextIndex, prevIndex]);
+
   const formatImageId = (id) => {
     return String(id).padStart(12, '0');
   }
 
   const imageUrl = `${process.env.REACT_APP_COCO_IMAGE_HOST}/val2014/COCO_val2014_${formatImageId(currentSampleQuestion.image_id)}.jpg`
-  const imageRef = React.useRef(null);
+
+  React.useEffect(() => {
+    const img = new Image();
+    img.src = imageUrl;
+    img.onload = () => setImageLoading(false);
+    img.onerror = () => setImageLoading(false);
+  }, [imageUrl]);
 
   React.useEffect(() => {
     setImageLoading(true);
@@ -60,12 +90,15 @@ function AnswerClassSampleCategoryViewer({ runId, classId, categoryType, sampleQ
           <ThreeDots color="#ffffff" height={50} width={50} />
         </div>
       }
-      <img
-        ref={imageRef}
-        src={imageUrl}
-        alt="vqa_image"
-        className={`image-content ${isImageLoading ? 'hidden' : ''}`}
-      />
+      <div className={`image-content ${isImageLoading ? 'hidden' : ''}`}>
+        <ModalImage
+            small={imageUrl}
+            large={imageUrl}
+            alt="vqa_image"
+            hideDownload={true}
+            hideZoom={true}
+          />
+      </div>
       <h3>Predictions</h3>
       <ol>
         {currentSampleQuestion.predicted_classes.map((predicted_class, index) => (

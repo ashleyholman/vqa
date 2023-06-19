@@ -28,9 +28,11 @@
 }
 
 .image-content {
+  display: flex;
+  justify-content: left;
+  align-items: center;
   height: 40vh;
-  width: auto;
-  object-fit: contain;
+  overflow: hidden;
 }
 
 .hidden {
