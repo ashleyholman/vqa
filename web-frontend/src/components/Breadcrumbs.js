@@ -42,7 +42,10 @@ function Breadcrumbs() {
       );
       if (pathParts.length >= 4) {
         const classId = pathParts[3];
-        const className = errorAnalysisSummaryData[classId]?.class_label ? `Class "${errorAnalysisSummaryData[classId].class_label}"` : `Class ${classId}`;
+        let className = `Class ${classId}`
+        if (isErrorAnalysisSummaryDataLoaded) {
+          className = errorAnalysisSummaryData[classId]?.class_label ? `Class "${errorAnalysisSummaryData[classId].class_label}"` : `Class ${classId}`;
+        }
         breadcrumbs = (
           <>
             {breadcrumbs}{' -> '}
