@@ -1,4 +1,5 @@
 import json
+import inflect
 import os
 from transformers import BertModel, BertTokenizer, ViTModel, ViTImageProcessor
 import torch
@@ -31,7 +32,7 @@ class VQADataset(Dataset):
     MINI_QUESTIONS_JSON_FILE_NAME = 'data/subset_questions.json'
     MINI_IMAGE_PREFIX = 'data/train2014/COCO_train2014_'
 
-    def __init__(self, settype='train', answer_classes=[], with_input_ids=False, with_images_features=False):
+    def __init__(self, settype='train', answer_classes_and_substitutions=([], []), with_input_ids=False, with_images_features=False):
         self.images = []
         self.input_ids = []
         self.attention_masks = []
@@ -74,16 +75,16 @@ class VQADataset(Dataset):
         # Create a reverse mapping from question_id to annotation
         question_to_annotation = {a['question_id']: a for a in annotations}
 
-        if not answer_classes:
+        if not all(answer_classes_and_substitutions):
             # Caller did not specify answer_classes, so build them from the most common answers
             print("Building answer classes from the most common answers...")
-            self.answer_classes = VQADataset.build_answer_classes(annotations)
+            self.answer_classes, self.answer_substitutions = VQADataset.build_answer_classes(annotations)
         else:
-            self.answer_classes = answer_classes
+            self.answer_classes = answer_classes_and_substitutions[0]
+            self.answer_substitutions = answer_classes_and_substitutions[1]
         # apply the answer classes as answer_class_id's to the annotations set
         print("Applying answer classes to annotations...")
-        VQADataset.apply_answer_classes(annotations, self.answer_classes)
-        #print(f"Answer classes: {self.answer_classes}")
+        VQADataset.apply_answer_classes(annotations, self.answer_classes, self.answer_substitutions)
 
         # Build a count of the number of answers per class.  This can be used to analyse class imbalance.
         self.class_counts = self._count_classes(annotations, len(self.answer_classes))
@@ -132,26 +133,78 @@ class VQADataset(Dataset):
     # This will leave us with 1000 answer classes to predict on.
     @staticmethod
     def build_answer_classes(annotations):
-        # Identify top 999 answer classes
+        p = inflect.engine()
         answer_counts = Counter(a['multiple_choice_answer'] for a in annotations)
-        answer_classes = [answer for answer, count in answer_counts.most_common(999)]
+        final_counts = {}
+        substitutions = {}
+
+        for answer, count in answer_counts.items():
+            # exclude problem cases where either inflect is mistakingly
+            # considering it a plural when it's not, or we don't want to
+            # merge it with its plural since they can have different meanings in
+            # some contexts.
+            if answer in ['brass', 'bus', 'cs', 'doubles', 'dominos', 'downs' 'fries', 'glasses',
+                          'lots', 'shades', 'singles', 'ss', 'trunks', 'us', 'uss']:
+                continue
+            singular = p.singular_noun(answer)
+            if (singular and singular != answer and singular in answer_counts):
+                # This condition means that the current answer is a plural
+                # (otherwise singular would be False) and there exists a
+                # singular form of this answer also in the answer_counts list.
+                plural = answer
+
+                if singular in substitutions or plural in substitutions:
+                    # Not expected to happen. Avoid chaining multiple
+                    # substituions for any reason.
+                    print(f"WARNING: Skip substituting ({singular} / {plural}) to avoid double substitutions")
+                    continue
+
+                if (answer_counts[singular] > answer_counts[plural]):
+                    # The singular form is more common, so use that as the
+                    # answer class
+                    class_to_consolidate = plural
+                    class_to_keep = singular
+                else:
+                    # The plural form is more common, so use that as the
+                    # answer class
+                    class_to_consolidate = singular
+                    class_to_keep = plural
+
+                # Record the substitutions
+                substitutions[class_to_consolidate] = class_to_keep
+
+        # Now that we have a list of substitutions, consolidate the counts into final_counts
+        for answer, count in answer_counts.items():
+            if answer in substitutions:
+                key_to_increment = substitutions[answer]
+            else:
+                key_to_increment = answer
+
+            final_counts[key_to_increment] = final_counts.get(key_to_increment, 0) + count
+
+        # Sort final_counts and keep the top 999 answers
+        top_answers = [answer for answer, count in sorted(final_counts.items(), key=lambda x: x[1], reverse=True)[:999]]
 
         # Add 'other' class
-        answer_classes.append('other')
+        top_answers.append('other')
 
-        return answer_classes
+        # the substitutions list can be reduced to only contain substituions that map to a top answer
+        substitutions = {k: v for k, v in substitutions.items() if v in top_answers}
 
-    def apply_answer_classes(annotations, answer_classes):
+        return top_answers, substitutions
+
+    def apply_answer_classes(annotations, answer_classes, substitutions):
         # Map each answer to its class
         for annotation in annotations:
             answer = annotation['multiple_choice_answer']
+            if answer in substitutions:
+                # apply substitution
+                answer = substitutions[answer]
             if answer not in answer_classes:
                 # assign a class value of 999 which represents the "other" class
                 annotation['answer_class_id'] = 999
-                #print(f"Assigning answer \"{answer}\" to 'other'")
             else:
                 annotation['answer_class_id'] = answer_classes.index(answer)
-                #print(f"Answer \"{answer}\" is in the top 999.. assigning with index {top_answers.index(answer)}")
 
     def _count_classes(self, annotations, num_classes):
         class_counts = np.zeros(num_classes, dtype=int)
@@ -163,7 +216,6 @@ class VQADataset(Dataset):
     @lru_cache(maxsize=1000)
     def preprocess_image(self, image_id):
         image_path = self.image_prefix + str(image_id).zfill(12) + '.jpg'
-        #print(f"CACHE MISS on {image_path}")
 
         image = Image.open(image_path)
         image = image.convert("RGB")

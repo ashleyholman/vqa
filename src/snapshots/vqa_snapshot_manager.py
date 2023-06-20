@@ -41,7 +41,7 @@ class VQASnapshotManager:
             metadata = json.load(f)
 
         # Load dataset
-        dataset = VQADataset(settype=dataset_type, answer_classes=metadata['answer_classes'])
+        dataset = VQADataset(settype=dataset_type, answer_classes_and_substitutions=(metadata['answer_classes'], metadata['answer_substitutions']))
 
         # Initialize the model
         model = VQAModel(dataset.answer_classes)
@@ -89,6 +89,7 @@ class VQASnapshotManager:
         metadata = {
             'settype': dataset.settype,
             'answer_classes': dataset.answer_classes,
+            'answer_substitutions': dataset.answer_substitutions,
             'lightweight': lightweight,
             'model_version': self.config.model_name,
             'epoch': epoch,
@@ -110,8 +111,9 @@ class VQASnapshotManager:
             if isinstance(value, float):
                 metadata[key] = Decimal(str(value))
 
-        # Remove answer class and add snapshot name
+        # Remove answer classes/substitutions and add snapshot name
         metadata.pop('answer_classes')
+        metadata.pop('answer_substitutions')
         metadata['snapshot_name'] = snapshot_name
 
         # Insert DDB record

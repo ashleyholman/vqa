@@ -180,6 +180,9 @@ class Run:
             self.model = snapshot.get_model()
             self.optimizer = snapshot.get_optimizer()
 
+            print("Resuming with answer classes: ", self.training_dataset.answer_classes)
+            print("Resuming with answer substitutions: ", self.training_dataset.answer_substitutions)
+
             # The epoch number stored in the snapshot represents
             # the last completed training epoch, so resume training from epoch+1
             start_epoch = snapshot.get_metadata()["epoch"]+1
@@ -201,6 +204,7 @@ class Run:
 
             # load model
             print("Answer classes: ", self.training_dataset.answer_classes)
+            print("Answer substitutions: ", self.training_dataset.answer_substitutions)
             self.model = VQAModel(self.training_dataset.answer_classes)
 
             # Create a new optimizer
@@ -209,9 +213,10 @@ class Run:
             # epoch's are 1-indexed for ease of understanding by the user
             start_epoch = 1
 
-            # for a new run, store the answer_classes in the run record
+            # for a new run, store the answer_classes and substitutions in the run record
             column_values = {
-                'answer_classes': self.training_dataset.answer_classes
+                'answer_classes': self.training_dataset.answer_classes,
+                'answer_substitutions' : self.training_dataset.answer_substitutions
             }
             self.run_manager.update_run(self.run_id, column_values)
 
@@ -224,9 +229,9 @@ class Run:
             # FIXME: Handle this in snapshot manager or VQADataset class
             self.model.answer_embeddings = self.model.answer_embeddings.to(self.device)
 
-        # Load the validation dataset, using the same answer classes as the training set.
+        # Load the validation dataset, using the same answer classes and substitutions as used in training.
         print("Loading validation dataset...")
-        self.validation_dataset = VQADataset(self.validation_dataset_type, self.training_dataset.answer_classes)
+        self.validation_dataset = VQADataset(self.validation_dataset_type, (self.training_dataset.answer_classes, self.training_dataset.answer_substitutions))
 
         model_trainer = ModelTrainer(self.config, self.model, self.training_dataset, self.optimizer, num_dataloader_workers)
         model_tester = ModelTester(self.config, self.validation_dataset, num_dataloader_workers)

@@ -13,6 +13,7 @@ setup(
         'numpy',
         'tqdm',
         'scikit-learn',
-        'colorama'
+        'colorama',
+        'inflect'
     ],
 )
