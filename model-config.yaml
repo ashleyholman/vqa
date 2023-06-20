@@ -22,7 +22,7 @@ use_class_weights: false
 ###### epoch-related settings ######
 
 # max_epochs: Training will cut off here if it hasn't already cut-off from another condition.
-max_epochs: 1000
+max_epochs: 800
 
 # snapshot_every_epochs: How frequently to take a snapshot.  This will be the
 # restore point if our run is interrupted, for example by spot instance eviction.
