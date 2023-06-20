@@ -3,6 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from transformers import BertTokenizer, BertModel
+from src.models.gated_multi_model_unit import GatedMultiModalUnit
 
 from src.models.model_configuration import ModelConfiguration
 
@@ -15,6 +16,9 @@ class VQAModel(nn.Module):
 
         self.image_transform = nn.Linear(self.INPUT_EMBEDDINGS_SIZE, self.INPUT_EMBEDDINGS_SIZE)
         self.question_transform = nn.Linear(self.INPUT_EMBEDDINGS_SIZE, self.INPUT_EMBEDDINGS_SIZE)
+
+        if self.config.use_gating:
+            self.gated_unit = GatedMultiModalUnit(self.INPUT_EMBEDDINGS_SIZE)
 
         if self.config.use_dropout:
             self.dropout_input = nn.Dropout(self.config.dropout_input_probability)
@@ -86,7 +90,12 @@ class VQAModel(nn.Module):
         image_embeddings = self.image_transform(image_embeddings)
         question_embeddings = self.question_transform(question_embeddings)
 
-        embeddings = torch.cat([image_embeddings, question_embeddings], dim=1)
+        if self.config.use_gating:
+            # use a weighted combination of the image and question embeddings
+            embeddings = self.gated_unit(image_embeddings, question_embeddings)
+        else:
+            # simple concatenation of image and question embeddings
+            embeddings = torch.cat([image_embeddings, question_embeddings], dim=1)
 
         if self.config.use_batch_normalization:
             embeddings = self.batch_norm(embeddings)
