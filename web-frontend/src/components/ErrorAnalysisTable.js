@@ -1,36 +1,85 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { ErrorAnalysisContext } from '../contexts/ErrorAnalysisContext.js';
+import { AiOutlineArrowUp, AiOutlineArrowDown } from 'react-icons/ai'; // import icons
 
 function ErrorAnalysisTable({ runId }) {
   const { errorAnalysisSummaryData, isErrorAnalysisSummaryDataLoaded } = React.useContext(ErrorAnalysisContext);
+  const [sortField, setSortField] = useState('class_id');
+  const [sortOrder, setSortOrder] = useState('asc');
+  const [sortedKeys, setSortedKeys] = useState([]);
+
+  useEffect(() => {
+    if (isErrorAnalysisSummaryDataLoaded) {
+      let keys = Object.keys(errorAnalysisSummaryData);
+      keys.sort((a, b) => {
+        if (sortField === 'class_id') {
+          return sortOrder === 'asc' ? Number(a) - Number(b) : Number(b) - Number(a);
+        } else if (sortField === 'label') {
+          const labelA = errorAnalysisSummaryData[a].class_label;
+          const labelB = errorAnalysisSummaryData[b].class_label;
+          return sortOrder === 'asc' ? labelA.localeCompare(labelB) : labelB.localeCompare(labelA);
+        } else {
+          // adjust this section based on the possible sortField value
+          const valA = errorAnalysisSummaryData[a].statistics[sortField];
+          const valB = errorAnalysisSummaryData[b].statistics[sortField];
+          return sortOrder === 'asc' ? valA - valB : valB - valA;
+        }
+      });
+      setSortedKeys(keys);
+    }
+  }, [isErrorAnalysisSummaryDataLoaded, errorAnalysisSummaryData, sortField, sortOrder]);
+
+  const handleSort = (field) => {
+    if (field === sortField) {
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortOrder('desc');
+    }
+  };
+
+  const renderSortArrow = (field) => {
+    if (sortField === field) {
+      return sortOrder === 'asc' ? <AiOutlineArrowUp /> : <AiOutlineArrowDown />;
+    }
+    return <AiOutlineArrowDown className="hidden-icon" />;
+  };
 
   if (!isErrorAnalysisSummaryDataLoaded) {
     return <div>Loading error analysis data...</div>;
   }
-
-  const sortedKeys = Object.keys(errorAnalysisSummaryData).sort((a, b) => Number(a) - Number(b));
 
   // Calculate total data size
   const totalDataSize = sortedKeys.reduce((total, key) => {
     return total + errorAnalysisSummaryData[key].statistics.TP + errorAnalysisSummaryData[key].statistics.FN;
   }, 0);
 
+  const headings = {
+    'class_id': 'Class ID',
+    'label': 'Label',
+    'actualPositives': 'Actual Positives (%)',
+    'precision': 'Precision',
+    'recall': 'Recall',
+    'f1Score': 'F1 Score',
+    'TP': 'True Positives',
+    'FP': 'False Positives',
+    'FN': 'False Negatives',
+    'sampleQuestions': 'Sample Questions',
+  };
+  
   return (
     <div className="table-responsive">
       <table className="table table-dark">
         <thead>
           <tr>
-            <th>Class ID</th>
-            <th>Label</th>
-            <th>Actual Positives (%)</th>
-            <th>Precision</th>
-            <th>Recall</th>
-            <th>F1 Score</th>
-            <th>True Positives</th>
-            <th>False Positives</th>
-            <th>False Negatives</th>
-            <th>Sample Questions</th>
+            {Object.entries(headings).map(([key, label]) => (
+              <th key={key} onClick={key !== 'sampleQuestions' ? () => handleSort(key) : undefined}>
+                <div className="header-div">
+                  {label} {key !== 'sampleQuestions' ? renderSortArrow(key) : null}
+                </div>
+              </th>
+            ))}
           </tr>
         </thead>
         <tbody>
@@ -38,11 +87,10 @@ function ErrorAnalysisTable({ runId }) {
             const TP = errorAnalysisSummaryData[key].statistics.TP;
             const FP = errorAnalysisSummaryData[key].statistics.FP;
             const FN = errorAnalysisSummaryData[key].statistics.FN;
-
-            const actualPositives = TP + FN;
-            const precision = TP + FP === 0 ? 0 : (TP / (TP + FP)).toFixed(2);
-            const recall = TP + FN === 0 ? 0 : (TP / (TP + FN)).toFixed(2);
-            const f1Score = (precision + recall) === 0 ? 0 : (2 * ((precision * recall) / (precision + recall))).toFixed(2);
+            const actualPositives = errorAnalysisSummaryData[key].statistics.actualPositives;
+            const precision = errorAnalysisSummaryData[key].statistics.precision.toFixed(2);
+            const recall = errorAnalysisSummaryData[key].statistics.recall.toFixed(2);
+            const f1Score = errorAnalysisSummaryData[key].statistics.f1Score.toFixed(2);
 
             return (
               <tr key={key}>
