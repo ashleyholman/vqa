@@ -8,10 +8,6 @@ function Breadcrumbs() {
   const pathParts = location.pathname.split('/').filter(Boolean);
   const { errorAnalysisSummaryData, isErrorAnalysisSummaryDataLoaded } = React.useContext(ErrorAnalysisContext);
 
-  if (!isErrorAnalysisSummaryDataLoaded) {
-    return <div>Loading...</div>;
-  }
-
   let breadcrumbs = null;
 
   if (pathParts.length === 0) {
