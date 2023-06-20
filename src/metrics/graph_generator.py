@@ -144,7 +144,7 @@ class GraphGenerator():
             # check for existance of error analysis data in run record
             if 'error_analysis_s3_url' in run and 'answer_classes' in run:
                 output_dir = f"{run_web_dir}/error_analysis"
-                if not os.path.exists(output_dir) or regenerate_existing:
+                if not os.path.exists(output_dir) or regenerate_existing or run['run_status'] == 'IN_PROGRESS':
                     # Create output directory if it doesn't exist
                     os.makedirs(output_dir, exist_ok=True)
 
@@ -164,7 +164,7 @@ class GraphGenerator():
 
             # now generate the main JSON file for this run (contains config and metrics)
             main_json_file = f"{run_web_dir}/main.json"
-            if not os.path.exists(main_json_file) or regenerate_existing:
+            if not os.path.exists(main_json_file) or regenerate_existing or run['run_status'] == 'IN_PROGRESS':
                 # Create output directory if it doesn't exist
                 os.makedirs(run_web_dir, exist_ok=True)
 
