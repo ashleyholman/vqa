@@ -20,6 +20,9 @@ shuffle: true
 ###### loss-function parameters ######
 use_class_weights: false
 
+###### dataset options ######
+merge_singular_plural_answer_classes: true
+
 ###### epoch-related settings ######
 
 # max_epochs: Training will cut off here if it hasn't already cut-off from another condition.

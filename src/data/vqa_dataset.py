@@ -132,55 +132,58 @@ class VQADataset(Dataset):
     # most common answers and make them labels, and then add an "other" label that all other answers will be.
     # This will leave us with 1000 answer classes to predict on.
     @staticmethod
-    def build_answer_classes(annotations):
+    def build_answer_classes(annotations, merge_singular_plural_classes=True):
         p = inflect.engine()
         answer_counts = Counter(a['multiple_choice_answer'] for a in annotations)
         final_counts = {}
         substitutions = {}
 
-        for answer, count in answer_counts.items():
-            # exclude problem cases where either inflect is mistakingly
-            # considering it a plural when it's not, or we don't want to
-            # merge it with its plural since they can have different meanings in
-            # some contexts.
-            if answer in ['brass', 'bus', 'cs', 'doubles', 'dominos', 'downs' 'fries', 'glasses',
-                          'lots', 'shades', 'singles', 'ss', 'trunks', 'us', 'uss']:
-                continue
-            singular = p.singular_noun(answer)
-            if (singular and singular != answer and singular in answer_counts):
-                # This condition means that the current answer is a plural
-                # (otherwise singular would be False) and there exists a
-                # singular form of this answer also in the answer_counts list.
-                plural = answer
-
-                if singular in substitutions or plural in substitutions:
-                    # Not expected to happen. Avoid chaining multiple
-                    # substituions for any reason.
-                    print(f"WARNING: Skip substituting ({singular} / {plural}) to avoid double substitutions")
+        if merge_singular_plural_classes:
+            for answer, count in answer_counts.items():
+                # exclude problem cases where either inflect is mistakingly
+                # considering it a plural when it's not, or we don't want to
+                # merge it with its plural since they can have different meanings in
+                # some contexts.
+                if answer in ['brass', 'bus', 'cs', 'doubles', 'dominos', 'downs' 'fries', 'glasses',
+                              'lots', 'shades', 'singles', 'ss', 'trunks', 'us', 'uss']:
                     continue
+                singular = p.singular_noun(answer)
+                if (singular and singular != answer and singular in answer_counts):
+                    # This condition means that the current answer is a plural
+                    # (otherwise singular would be False) and there exists a
+                    # singular form of this answer also in the answer_counts list.
+                    plural = answer
 
-                if (answer_counts[singular] > answer_counts[plural]):
-                    # The singular form is more common, so use that as the
-                    # answer class
-                    class_to_consolidate = plural
-                    class_to_keep = singular
+                    if singular in substitutions or plural in substitutions:
+                        # Not expected to happen. Avoid chaining multiple
+                        # substituions for any reason.
+                        print(f"WARNING: Skip substituting ({singular} / {plural}) to avoid double substitutions")
+                        continue
+
+                    if (answer_counts[singular] > answer_counts[plural]):
+                        # The singular form is more common, so use that as the
+                        # answer class
+                        class_to_consolidate = plural
+                        class_to_keep = singular
+                    else:
+                        # The plural form is more common, so use that as the
+                        # answer class
+                        class_to_consolidate = singular
+                        class_to_keep = plural
+
+                    # Record the substitutions
+                    substitutions[class_to_consolidate] = class_to_keep
+
+            # Now that we have a list of substitutions, consolidate the counts into final_counts
+            for answer, count in answer_counts.items():
+                if answer in substitutions:
+                    key_to_increment = substitutions[answer]
                 else:
-                    # The plural form is more common, so use that as the
-                    # answer class
-                    class_to_consolidate = singular
-                    class_to_keep = plural
+                    key_to_increment = answer
 
-                # Record the substitutions
-                substitutions[class_to_consolidate] = class_to_keep
-
-        # Now that we have a list of substitutions, consolidate the counts into final_counts
-        for answer, count in answer_counts.items():
-            if answer in substitutions:
-                key_to_increment = substitutions[answer]
-            else:
-                key_to_increment = answer
-
-            final_counts[key_to_increment] = final_counts.get(key_to_increment, 0) + count
+                final_counts[key_to_increment] = final_counts.get(key_to_increment, 0) + count
+        else:
+            final_counts = answer_counts
 
         # Sort final_counts and keep the top 999 answers
         top_answers = [answer for answer, count in sorted(final_counts.items(), key=lambda x: x[1], reverse=True)[:999]]
