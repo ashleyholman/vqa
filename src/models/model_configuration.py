@@ -31,6 +31,12 @@ class ModelConfiguration:
     def to_json_string(self):
         return json.dumps(self.config, sort_keys=True)
 
+    def __getstate__(self):
+        return self.config
+
+    def __setstate__(self, state):
+        self.config = state
+
     # alternative constructor from a json string
     @classmethod
     def from_json_string(cls, json_string):
