@@ -25,7 +25,15 @@ function Table({ data }) {
       newData = newData.filter(run => run.validation_dataset_type !== 'mini');
     }
 
-    newData.sort(/*... existing sorting code ...*/);
+    newData.sort((a, b) => {
+      if (a[sortField] < b[sortField]) {
+          return sortOrder === 'asc' ? -1 : 1;
+        }
+        if (a[sortField] > b[sortField]) {
+          return sortOrder === 'asc' ? 1 : -1;
+        }
+        return 0;
+      });
 
     setSortedData(newData);
   }, [data, sortField, sortOrder, showMini]);
