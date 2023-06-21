@@ -126,7 +126,21 @@ class GraphGenerator():
 
             run_web_dir = f"{self.PROJECT_ROOT}/web-frontend/public/data/run/{run_id}"
 
-            max_trained_epoch = max(metrics.keys())
+            # determine the maximum epoch number that has finished training and validation.
+            max_trained_epoch = None
+            for epoch, metric_data in sorted(metrics.items(), reverse=True):
+                # check if this epoch has both training and validation metrics
+                # otherwise, it might not have finished validation yet, in which
+                # case we can't use it to set the final_* values.
+                if any(key.startswith(metrics_prefix) for key in metric_data.keys()):
+                    max_trained_epoch = epoch
+                    break
+
+            if max_trained_epoch is None:
+                print(f"No completed epoch found for run: {run_id}.  Skipping.")
+                continue
+
+            print(f"Max trained epoch: {max_trained_epoch}")
 
             # copy specific keys from run to index_metadata
             index_entry = {}
