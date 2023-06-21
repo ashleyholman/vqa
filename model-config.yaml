@@ -1,8 +1,8 @@
 ###### model name ######
-model_name: 'v1_unweighted_answerembed_4hidden_dropout_batchnorm_gated'
+model_name: 'v1_unweighted_answerembed_2hidden_dropout_batchnorm_gated'
 
 ###### model architecture-related settings ######
-num_hidden_layers: 4
+num_hidden_layers: 2
 hidden_size: 1536
 use_answer_embeddings: true
 use_answer_embedding_z_normalization: true
