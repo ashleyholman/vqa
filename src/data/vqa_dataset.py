@@ -10,6 +10,8 @@ from PIL import Image
 import numpy as np
 from functools import lru_cache
 
+from src.models.model_configuration import ModelConfiguration
+from src.data.embeddings_manager import EmbeddingsManager
 
 class VQADataset(Dataset):
     DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), '../../data')
@@ -32,7 +34,7 @@ class VQADataset(Dataset):
     MINI_QUESTIONS_JSON_FILE_NAME = 'data/subset_questions.json'
     MINI_IMAGE_PREFIX = 'data/train2014/COCO_train2014_'
 
-    def __init__(self, settype='train', answer_classes_and_substitutions=([], []), with_input_ids=False, with_images_features=False):
+    def __init__(self, config : ModelConfiguration, settype='train', num_dataloader_workers=1, answer_classes_and_substitutions=([], []), with_input_ids=False, with_images_features=False):
         self.images = []
         self.input_ids = []
         self.attention_masks = []
@@ -42,11 +44,14 @@ class VQADataset(Dataset):
         self.images = {}
         self.settype = settype
         self.question_embeddings = []
+        self.question_texts = []
         self.image_embeddings = []
+        self.image_paths = []
         self.image_count = 0
         self.with_input_ids = with_input_ids
         self.with_images_features = with_images_features
-        self.embeddings_loaded = False
+        self.config = config
+        self.embeddings_manager = EmbeddingsManager(config, settype, num_dataloader_workers)
 
         self.bert_tokenizer = BertTokenizer.from_pretrained(self.BERT_MODEL_NAME)
         self.vit_preprocessor = ViTImageProcessor.from_pretrained(self.VIT_MODEL_NAME)
@@ -89,22 +94,10 @@ class VQADataset(Dataset):
         # Build a count of the number of answers per class.  This can be used to analyse class imbalance.
         self.class_counts = self._count_classes(annotations, len(self.answer_classes))
 
-        # Attempt to load pre-processed embeddings for questions and images.
-        try:
-            self._load_embeddings()
-            self.embeddings_loaded = True
-            print(f"Embeddings loaded for {settype}.")
-        except FileNotFoundError:
-            print(f"No embedding file found for {settype}. Generating embeddings later...")
-
         # Tokenizing the question text into input_ids takes time.  Only do it if
-        # we need to, which is under one of two conditions:
-        # 1) The user requested input_ids to be in the dataset by setting with_input_ids=True
-        # 2) We don't have embeddings loaded, so we need to generate them which requires input_ids.
-        tokenize_question_text = self.with_input_ids or not self.embeddings_loaded
-
+        # the user requested input_ids to be in the dataset by setting
         for question in questions:
-            if tokenize_question_text:
+            if self.with_input_ids:
                 encoding = self.bert_tokenizer.encode_plus(
                     question['question'],
                     max_length=30,
@@ -117,11 +110,14 @@ class VQADataset(Dataset):
 
             self.labels.append(question_to_annotation[question['question_id']]['answer_class_id'])
             self.image_ids.append(question['image_id'])
+            self.image_paths.append(self.image_prefix + str(question['image_id']).zfill(12) + '.jpg')
             self.question_ids.append(question['question_id'])
+            self.question_texts.append(question['question'])
 
-        if not self.embeddings_loaded:
-            self._generate_and_save_all_embeddings()
-            self.embeddings_loaded = True
+        # Load pre-processed embeddings for question texts and images.  EmbeddingsManager will
+        # generate and store them if they don't already exist.
+        self.question_embeddings = self.embeddings_manager.get_embeddings('text', self.question_texts)
+        self.image_embeddings = self.embeddings_manager.get_embeddings('vision', self.image_paths)
 
         print("Done initialising dataset")
 
@@ -214,81 +210,6 @@ class VQADataset(Dataset):
         for annotation in annotations:
             class_counts[annotation['answer_class_id']] += 1
         return class_counts
-
-
-    @lru_cache(maxsize=1000)
-    def preprocess_image(self, image_id):
-        image_path = self.image_prefix + str(image_id).zfill(12) + '.jpg'
-
-        image = Image.open(image_path)
-        image = image.convert("RGB")
-
-        # Convert the image to a numpy array and pass it to the feature extractor
-        image = np.array(image)
-        features = self.vit_preprocessor(image, return_tensors='pt')
-
-        # return the pixel_values features
-        return features['pixel_values'].squeeze(0)
-
-    def _load_embeddings(self):
-        settype = self.settype
-        save_path = os.path.join(self.DATA_DIR, f'{settype}_embeddings.pt')
-
-        embeddings = torch.load(save_path)
-
-        self.image_embeddings = embeddings['image_embeddings']
-        self.question_embeddings = embeddings['question_embeddings']
-
-    # This method is used to pre-compute the embeddings for all images and question text in the dataset.
-    # This is so that we can feed the embeddings directly into our model at training/validation time,
-    # rather than having to compute them on the fly.  This will *hopefully* provide a significant speedup
-    # for training and validation.
-    def _generate_and_save_all_embeddings(self):
-        BATCH_SIZE = 16
-        device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-
-        # Move both models to GPU if available
-        image_model = ViTModel.from_pretrained(self.VIT_MODEL_NAME).to(device)
-        text_model = BertModel.from_pretrained(self.BERT_MODEL_NAME).to(device)
-
-        all_image_embeddings = []
-        all_text_embeddings = []
-
-        print('Generating embeddings...')
-
-        for idx in range(0, len(self.image_ids), BATCH_SIZE):
-            batch_image_ids = self.image_ids[idx:idx+BATCH_SIZE]
-            batch_images = torch.stack([self.preprocess_image(image_id) for image_id in batch_image_ids]).to(device)
-
-            batch_input_ids = torch.stack(self.input_ids[idx:idx+BATCH_SIZE]).to(device)
-            batch_attention_masks = torch.stack(self.attention_masks[idx:idx+BATCH_SIZE]).to(device)
-
-            with torch.no_grad():
-                image_embeddings = image_model(batch_images)['pooler_output']
-                text_embeddings = text_model(batch_input_ids, attention_mask=batch_attention_masks)['pooler_output']
-
-            all_image_embeddings.append(image_embeddings.cpu())
-            all_text_embeddings.append(text_embeddings.cpu())
-
-            if idx % (100*BATCH_SIZE) == 0:
-                print(f'Processed {idx}/{len(self)} images and questions...')
-
-        all_image_embeddings = torch.cat(all_image_embeddings)
-        all_text_embeddings = torch.cat(all_text_embeddings)
-        print(f'Finished processing {len(all_image_embeddings)} images and questions...')
-
-        save_path = os.path.join(self.DATA_DIR, f'{self.settype}_embeddings.pt')
-
-        torch.save({
-            'image_embeddings': all_image_embeddings,
-            'question_embeddings': all_text_embeddings
-        }, save_path)
-
-        print(f'All embeddings saved to {save_path}.')
-
-        # Store embeddings to member variables directly to avoid disk read after generation
-        self.image_embeddings = all_image_embeddings
-        self.question_embeddings = all_text_embeddings
 
     def __len__(self):
         return max(len(self.input_ids), len(self.question_embeddings))

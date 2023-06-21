@@ -12,7 +12,6 @@ import subprocess
 from torch.optim import Adam
 from datetime import datetime
 
-
 from src.data.vqa_dataset import VQADataset
 from src.metrics.metrics_manager import MetricsManager
 from src.metrics.performance_tracker import PerformanceTracker
@@ -200,7 +199,7 @@ class Run:
         else:
             # load training dataset
             print("Loading training dataset...")
-            self.training_dataset = VQADataset(self.training_dataset_type)
+            self.training_dataset = VQADataset(self.config, self.training_dataset_type, num_dataloader_workers)
 
             # load model
             print("Answer classes: ", self.training_dataset.answer_classes)
@@ -231,7 +230,7 @@ class Run:
 
         # Load the validation dataset, using the same answer classes and substitutions as used in training.
         print("Loading validation dataset...")
-        self.validation_dataset = VQADataset(self.validation_dataset_type, (self.training_dataset.answer_classes, self.training_dataset.answer_substitutions))
+        self.validation_dataset = VQADataset(self.config, self.validation_dataset_type, num_dataloader_workers, (self.training_dataset.answer_classes, self.training_dataset.answer_substitutions))
 
         model_trainer = ModelTrainer(self.config, self.model, self.training_dataset, self.optimizer, num_dataloader_workers)
         model_tester = ModelTester(self.config, self.validation_dataset, num_dataloader_workers)

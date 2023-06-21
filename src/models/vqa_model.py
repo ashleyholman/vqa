@@ -71,8 +71,8 @@ class VQAModel(nn.Module):
         return nn.Sequential(*layers)
 
     def recompute_answer_embeddings(self, answer_classes_text):
-        bert = BertModel.from_pretrained('bert-base-uncased')
-        tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
+        bert = BertModel.from_pretrained(self.config.input_embedding_model_names['text'])
+        tokenizer = BertTokenizer.from_pretrained(self.config.input_embedding_model_names['text'])
 
         inputs = tokenizer(answer_classes_text, return_tensors="pt", padding=True, truncation=True, max_length=50)
         with torch.no_grad():
