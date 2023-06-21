@@ -9,10 +9,10 @@
 - Check cosine similarity between raw answer embeddings to confirm clustering
   hypothesis
 - React app:
-  * Error Analysis page: Add statistics for each class, like accuracy, total
-    true answers, etc.
   * Sample questions page:
     * show totals for true positive, false positive etc
-    * add lightbox image display for larger view (try react-image-lightbox)
   * Add confusion matrix
   * When mousing over tables, highlight the row
+- Model:
+  * More substitutions: eg. "playing game" -> "playing", "ones on right", "one on right" -> "on right"?
+  * Try different embeddings: bert-huge and llama
