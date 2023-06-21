@@ -181,7 +181,7 @@ class VQASnapshotManager:
         try:
             for filename in ["model_weights.pth", "optimizer_state.pth", "metadata.json"]:
                 key = f"snapshots/{snapshot_name}/{filename}"
-                self.s3_helper.download_file(self.S3_BUCKET, key, os.path.join(local_snapshot_dir, filename))
+                self.s3_helper.download_file(S3Helper.BACKEND_BUCKET, key, os.path.join(local_snapshot_dir, filename))
         except Exception as e:
             print(f"Failed to download snapshot {snapshot_name}: {e}")
 
