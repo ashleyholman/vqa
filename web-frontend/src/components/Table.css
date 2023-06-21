@@ -6,3 +6,25 @@
 .mini-run {
   background-color: pink;
 }
+
+@keyframes in-progress-pulsing-fade {
+  0% {color: rgb(80, 100, 80);}
+  33% {color: rgb(0, 150, 0);}
+  66% {color: rgb(0, 255, 0);}
+  100% {color: rgb(80, 100, 80);}
+}
+
+@keyframes dot-one-animation {
+  0%, 25% { visibility: hidden; }
+  26%, 100% { visibility: visible; }
+}
+
+@keyframes dot-two-animation {
+  0%, 50% { visibility: hidden; }
+  51%, 100% { visibility: visible; }
+}
+
+@keyframes dot-three-animation {
+  0%, 75% { visibility: hidden; }
+  76%, 100% { visibility: visible; }
+}

@@ -27,7 +27,16 @@ function TableRow({ run }) {
           <Link to={`/run/${run.run_id}`}>{run.run_id}</Link>
         </td>
         <td>{timestamp}</td>
-        <td>{run['run_status']}</td>
+        {run.run_status === 'IN_PROGRESS' ? (
+          <td style={{ animation: `in-progress-pulsing-fade 2s infinite linear` }}>
+            {run.run_status}
+            <span style={{ animation: `dot-one-animation 1s infinite linear` }}>.</span>
+            <span style={{ animation: `dot-two-animation 1s infinite linear` }}>.</span>
+            <span style={{ animation: `dot-three-animation 1s infinite linear` }}>.</span>
+          </td>
+        ) : (
+          <td>{run.run_status}</td>
+        )}
         <td>{num_epochs}</td>
         <td>{run['final_accuracy'].toFixed(2)}</td>
         <td>{run['final_top_5_accuracy'].toFixed(2)}</td>
