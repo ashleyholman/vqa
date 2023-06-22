@@ -140,8 +140,6 @@ class GraphGenerator():
                 print(f"No completed epoch found for run: {run_id}.  Skipping.")
                 continue
 
-            print(f"Max trained epoch: {max_trained_epoch}")
-
             # copy specific keys from run to index_metadata
             index_entry = {}
             for key in ['run_id', 'started_at', 'run_status', 'config', 'validation_dataset_type']:
