@@ -34,7 +34,7 @@ class VQADataset(Dataset):
     MINI_QUESTIONS_JSON_FILE_NAME = 'data/subset_questions.json'
     MINI_IMAGE_PREFIX = 'data/train2014/COCO_train2014_'
 
-    def __init__(self, config : ModelConfiguration, settype='train', num_dataloader_workers=1, answer_classes_and_substitutions=([], []), with_input_ids=False, with_images_features=False):
+    def __init__(self, config : ModelConfiguration, embeddings_manager: EmbeddingsManager, settype='train', num_dataloader_workers=1, answer_classes_and_substitutions=([], []), with_input_ids=False, with_images_features=False):
         self.images = []
         self.input_ids = []
         self.attention_masks = []
@@ -51,7 +51,7 @@ class VQADataset(Dataset):
         self.with_input_ids = with_input_ids
         self.with_images_features = with_images_features
         self.config = config
-        self.embeddings_manager = EmbeddingsManager(config, settype, num_dataloader_workers)
+        self.embeddings_manager = embeddings_manager
 
         self.bert_tokenizer = BertTokenizer.from_pretrained(self.BERT_MODEL_NAME)
         self.vit_preprocessor = ViTImageProcessor.from_pretrained(self.VIT_MODEL_NAME)
@@ -116,8 +116,8 @@ class VQADataset(Dataset):
 
         # Load pre-processed embeddings for question texts and images.  EmbeddingsManager will
         # generate and store them if they don't already exist.
-        self.question_embeddings = self.embeddings_manager.get_embeddings('text', self.question_texts)
-        self.image_embeddings = self.embeddings_manager.get_embeddings('vision', self.image_paths)
+        self.question_embeddings = self.embeddings_manager.get_embeddings(self.settype, 'text', self.question_texts)
+        self.image_embeddings = self.embeddings_manager.get_embeddings(self.settype, 'vision', self.image_paths)
 
         print("Done initialising dataset")
 

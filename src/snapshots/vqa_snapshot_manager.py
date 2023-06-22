@@ -8,6 +8,7 @@ from botocore.exceptions import NoCredentialsError
 from datetime import datetime
 from decimal import Decimal
 from torch.optim import Adam
+from src.data.embeddings_manager import EmbeddingsManager
 
 from src.data.vqa_dataset import VQADataset
 from src.models.model_configuration import ModelConfiguration
@@ -25,10 +26,11 @@ class InvalidSnapshotException(Exception):
 class VQASnapshotManager:
     LOCAL_CACHE_DIR = os.path.join(os.path.dirname(os.path.realpath(__file__)), '../../snapshots')
 
-    def __init__(self):
-        self.s3_helper = S3Helper()
-        self.ddb_helper = DynamoDBHelper()
-        self.config = ModelConfiguration()
+    def __init__(self, config: ModelConfiguration, ddb_helper: DynamoDBHelper, s3_helper: S3Helper, embeddings_manager: EmbeddingsManager):
+        self.config = config
+        self.ddb_helper = ddb_helper
+        self.s3_helper = s3_helper
+        self.embeddings_manager = embeddings_manager
 
         # ensure caching dir exists
         os.makedirs(self.LOCAL_CACHE_DIR, exist_ok=True)
@@ -41,10 +43,10 @@ class VQASnapshotManager:
             metadata = json.load(f)
 
         # Load dataset
-        dataset = VQADataset(settype=dataset_type, answer_classes_and_substitutions=(metadata['answer_classes'], metadata['answer_substitutions']))
+        dataset = VQADataset(self.config, self.embeddings_manager, settype=dataset_type,  answer_classes_and_substitutions=(metadata['answer_classes'], metadata['answer_substitutions']))
 
         # Initialize the model
-        model = VQAModel(dataset.answer_classes)
+        model = VQAModel(self.config, self.embeddings_manager, dataset.answer_classes)
 
         # Load model weights
         state_dict = torch.load(os.path.join(self.LOCAL_CACHE_DIR, snapshot_name, "model_weights.pth"), map_location=device)

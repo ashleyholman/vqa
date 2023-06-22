@@ -12,11 +12,11 @@ import subprocess
 from torch.optim import Adam
 from datetime import datetime
 
+from src.data.embeddings_manager import EmbeddingsManager
 from src.data.vqa_dataset import VQADataset
 from src.metrics.metrics_manager import MetricsManager
 from src.metrics.performance_tracker import PerformanceTracker
 from src.metrics.error_tracker import ErrorTracker
-
 from src.models.model_configuration import ModelConfiguration
 from src.models.vqa_model import VQAModel
 from src.snapshots.vqa_snapshot_manager import VQASnapshotManager
@@ -32,24 +32,27 @@ VALIDATION_METRICS_SOURCE = "test_model"
 class Run:
     def __init__(self, config, args):
         self.config = config
-        self.snapshot_manager = VQASnapshotManager()
-        self.ddb_helper = DynamoDBHelper()
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        self.run_manager = RunManager()
-        self.s3_helper = S3Helper()
-
         self.skip_s3_storage = args.skip_s3_storage
         self.no_progress_bar = args.no_progress_bar
 
         # allow --max-epochs to override the config setting
         self.config.max_epochs = args.max_epochs
 
+        # determine the training and validation dataset types that we'll use
         if args.use_mini_dataset:
             self.training_dataset_type = 'mini'
             self.validation_dataset_type = 'mini'
         else:
             self.training_dataset_type = 'train'
             self.validation_dataset_type = 'validation'
+
+        # initialise dependencies
+        self.run_manager = RunManager()
+        self.ddb_helper = DynamoDBHelper()
+        self.s3_helper = S3Helper()
+        self.embeddings_manager = EmbeddingsManager(config, args.num_dataloader_workers)
+        self.snapshot_manager = VQASnapshotManager(config, self.ddb_helper, self.s3_helper, self.embeddings_manager)
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
         # Build a "state hash" which is a unique hash representing the state of the configuration set and code.
         self.state_hash = self._get_state_hash()
@@ -199,12 +202,12 @@ class Run:
         else:
             # load training dataset
             print("Loading training dataset...")
-            self.training_dataset = VQADataset(self.config, self.training_dataset_type, num_dataloader_workers)
+            self.training_dataset = VQADataset(self.config, self.embeddings_manager, self.training_dataset_type, num_dataloader_workers)
 
             # load model
             print("Answer classes: ", self.training_dataset.answer_classes)
             print("Answer substitutions: ", self.training_dataset.answer_substitutions)
-            self.model = VQAModel(self.training_dataset.answer_classes)
+            self.model = VQAModel(self.config, self.embeddings_manager, self.training_dataset.answer_classes)
 
             # Create a new optimizer
             self.optimizer = Adam(self.model.parameters(), lr=self.config.learning_rate)
@@ -230,7 +233,7 @@ class Run:
 
         # Load the validation dataset, using the same answer classes and substitutions as used in training.
         print("Loading validation dataset...")
-        self.validation_dataset = VQADataset(self.config, self.validation_dataset_type, num_dataloader_workers, (self.training_dataset.answer_classes, self.training_dataset.answer_substitutions))
+        self.validation_dataset = VQADataset(self.config, self.embeddings_manager, self.validation_dataset_type, num_dataloader_workers, (self.training_dataset.answer_classes, self.training_dataset.answer_substitutions))
 
         model_trainer = ModelTrainer(self.config, self.model, self.training_dataset, self.optimizer, num_dataloader_workers)
         model_tester = ModelTester(self.config, self.validation_dataset, num_dataloader_workers)

@@ -3,16 +3,18 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from transformers import BertTokenizer, BertModel
-from src.models.gated_multi_model_unit import GatedMultiModalUnit
 
+from src.data.embeddings_manager import EmbeddingsManager
+from src.models.gated_multi_model_unit import GatedMultiModalUnit
 from src.models.model_configuration import ModelConfiguration
 
 class VQAModel(nn.Module):
     INPUT_EMBEDDINGS_SIZE = 768
 
-    def __init__(self, answer_classes_text=None):
+    def __init__(self, config: ModelConfiguration, embeddings_manager: EmbeddingsManager, answer_classes_text=None):
         super().__init__()
-        self.config = ModelConfiguration()
+        self.config = config
+        self.embeddings_manager = embeddings_manager
 
         self.image_transform = nn.Linear(self.INPUT_EMBEDDINGS_SIZE, self.INPUT_EMBEDDINGS_SIZE)
         self.question_transform = nn.Linear(self.INPUT_EMBEDDINGS_SIZE, self.INPUT_EMBEDDINGS_SIZE)
