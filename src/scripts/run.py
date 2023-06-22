@@ -55,7 +55,7 @@ class Run:
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
         # Build a "state hash" which is a unique hash representing the state of the configuration set and code.
-        self.state_hash = self._get_state_hash()
+        self.git_commit_id, self.state_hash = self._get_state_hash()
 
         print(f"State hash: {self.state_hash}")
 
@@ -103,13 +103,14 @@ class Run:
 
         # obtain git commit hash of HEAD
         repo_root = os.path.join(os.path.dirname(__file__), '../../')
-        git_commit_hash = subprocess.check_output(['git', '-C', repo_root, 'rev-parse', 'HEAD']).strip().decode()
+        git_commit_id = subprocess.check_output(['git', '-C', repo_root, 'rev-parse', 'HEAD']).strip().decode()
 
-        combined_hash_input = f"{config_hash}:{git_commit_hash}:{self.training_dataset_type}:{self.validation_dataset_type}"
+        combined_hash_input = f"{config_hash}:{git_commit_id}:{self.training_dataset_type}:{self.validation_dataset_type}"
         print(f"Combined hash input: {combined_hash_input}")
 
-        # Return the first 20 characters of the combined hash.  This is sufficiently unique for our use case.
-        return hashlib.sha256(combined_hash_input.encode()).hexdigest()[:20]
+        # Our "state hash" will be the first 20 characters of the combined hash.  This is sufficiently unique for our use case.
+        state_hash = hashlib.sha256(combined_hash_input.encode()).hexdigest()[:20]
+        return git_commit_id, state_hash
 
     def _get_or_create_run(self):
         '''
@@ -132,7 +133,7 @@ class Run:
             # "unfinished-run" record which will allow us to resume this run if
             # it's interrupted.  We'll need to delete that record when we're
             # finished, with run_manager.delete_unfinished_run().
-            self.run_id = self.run_manager.create_run(self.training_dataset_type, self.validation_dataset_type, self.config.max_epochs, self.state_hash, self.config)
+            self.run_id = self.run_manager.create_run(self.training_dataset_type, self.validation_dataset_type, self.config.max_epochs, self.state_hash, self.git_commit_id, self.config)
             self.start_epoch = 1
             self.snapshot_name = None
 

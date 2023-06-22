@@ -17,7 +17,7 @@ class RunManager:
         unfinished_runs = self.ddb_helper.query(pk)
         return unfinished_runs[0] if unfinished_runs else None
 
-    def create_run(self, training_dataset_type, validation_dataset_type, max_epochs, state_hash, config):
+    def create_run(self, training_dataset_type, validation_dataset_type, max_epochs, state_hash, git_commit_id, config):
         run_id = str(uuid.uuid4())
         created_at_timestamp = datetime.datetime.now().isoformat()
 
@@ -28,6 +28,7 @@ class RunManager:
             'validation_dataset_type': validation_dataset_type,
             'max_epochs': max_epochs,
             'state_hash': state_hash,
+            'git_commit_id': git_commit_id,
             'config': config.to_json_string(),
             'started_at': created_at_timestamp,
             'run_status': 'IN_PROGRESS',
