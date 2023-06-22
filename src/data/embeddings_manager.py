@@ -120,12 +120,12 @@ class EmbeddingsManager:
                 if batch_counter % 50 == 0:
                     print(f"{batch_counter}/{total_batches} batches processed...")
 
-            embeddings = torch.cat(embeddings)
+            embeddings = torch.cat(embeddings).cpu()
 
             # save both the unique embeddings and the indices needed for
             # reconstruting an embeddings list that matches the original
             # the dataset's inputs.
-            torch.save({'embeddings': embeddings.cpu(), 'input_indices': input_indices}, save_path)
+            torch.save({'embeddings': embeddings, 'input_indices': input_indices}, save_path)
 
             # reconstruct the embeddings with duplicates
             input_embeddings = embeddings[input_indices]
