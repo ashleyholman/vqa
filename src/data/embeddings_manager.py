@@ -78,7 +78,7 @@ class EmbeddingsManager:
         else:
             # Stored embeddings aren't present on disk.  Generate them now.
             model_name = self.config.input_embedding_model_names[modality].split('/')[-1]
-            print(f'{modality} embeddings not found on disk for model "{model_name}".  Generating...')
+            print(f'{modality} embeddings for {dataset_type} dataset not found on disk for model "{model_name}".  Generating...')
             return self.generate_and_save_text_embeddings(dataset_type, modality, inputs)
 
     def generate_and_save_text_embeddings(self, dataset_type, modality, inputs) -> None:
