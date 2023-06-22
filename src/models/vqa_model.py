@@ -14,20 +14,22 @@ class VQAModel(nn.Module):
     def __init__(self, config: ModelConfiguration, embeddings_manager: EmbeddingsManager, answer_classes_text=None):
         super().__init__()
         self.config = config
-        self.embeddings_manager = embeddings_manager
 
-        self.image_transform = nn.Linear(self.INPUT_EMBEDDINGS_SIZE, self.INPUT_EMBEDDINGS_SIZE)
-        self.question_transform = nn.Linear(self.INPUT_EMBEDDINGS_SIZE, self.INPUT_EMBEDDINGS_SIZE)
+        self.image_embedding_size = embeddings_manager.get_embedding_size('vision')
+        self.text_embedding_size = embeddings_manager.get_embedding_size('text')
+
+        self.image_transform = nn.Linear(self.image_embedding_size, self.image_embedding_size)
+        self.question_transform = nn.Linear(self.text_embedding_size, self.text_embedding_size)
 
         if self.config.use_gating:
-            self.gated_unit = GatedMultiModalUnit(self.INPUT_EMBEDDINGS_SIZE)
+            self.gated_unit = GatedMultiModalUnit(self.image_embedding_size, self.text_embedding_size)
 
         if self.config.use_dropout:
             self.dropout_input = nn.Dropout(self.config.dropout_input_probability)
             self.dropout_hidden = nn.Dropout(self.config.dropout_hidden_probability)
 
         if self.config.use_batch_normalization:
-            self.batch_norm = nn.BatchNorm1d(self.INPUT_EMBEDDINGS_SIZE * 2)
+            self.batch_norm = nn.BatchNorm1d(self.image_embedding_size + self.text_embedding_size)
 
         if self.config.num_hidden_layers > 0:
             self.hidden_layers = self._build_hidden_layers()
@@ -41,10 +43,12 @@ class VQAModel(nn.Module):
         if self.config.num_hidden_layers > 0:
             head_input_size = self.config.hidden_size
         else:
-            head_input_size = self.INPUT_EMBEDDINGS_SIZE * 2
+            head_input_size = self.image_embedding_size + self.text_embedding_size
 
         if self.config.use_answer_embeddings:
-            head_output_size = self.INPUT_EMBEDDINGS_SIZE
+            # when using answer embeddings, our head layer outputs am embedding which
+            # will be compared against the embeddings of the answer class labels (text).
+            head_output_size = self.text_embedding_size
             self.recompute_answer_embeddings(answer_classes_text)
         else:
             head_output_size = len(answer_classes_text)
@@ -55,7 +59,7 @@ class VQAModel(nn.Module):
 
     def _build_hidden_layers(self):
         # Add first hidden layer (input size is different, since it takes the embeddings as input)
-        layers = [nn.Linear(self.INPUT_EMBEDDINGS_SIZE * 2, self.config.hidden_size)]
+        layers = [nn.Linear(self.image_embedding_size + self.text_embedding_size, self.config.hidden_size)]
         if self.config.use_batch_normalization:
             layers.append(nn.BatchNorm1d(self.config.hidden_size))
         layers.append(nn.ReLU())

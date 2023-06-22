@@ -2,14 +2,14 @@ import torch.nn as nn
 import torch
 
 class GatedMultiModalUnit(nn.Module):
-    def __init__(self, input_dim):
+    def __init__(self, image_embedding_size, text_embedding_size):
         super().__init__()
         self.image_gate = nn.Sequential(
-            nn.Linear(input_dim*2, input_dim),
+            nn.Linear(image_embedding_size + text_embedding_size, image_embedding_size),
             nn.Sigmoid()
         )
         self.text_gate = nn.Sequential(
-            nn.Linear(input_dim*2, input_dim),
+            nn.Linear(image_embedding_size + text_embedding_size, text_embedding_size),
             nn.Sigmoid()
         )
 
@@ -18,9 +18,8 @@ class GatedMultiModalUnit(nn.Module):
         image_gate_values = self.image_gate(combined_embeddings)
         text_gate_values = self.text_gate(combined_embeddings)
 
-        gate_sum = image_gate_values + text_gate_values
+        # Apply gating to each embedding
+        image_weighted = image_embeddings * image_gate_values
+        text_weighted = text_embeddings * text_gate_values
 
-        image_weighted = image_embeddings * (image_gate_values / gate_sum)
-        text_weighted = text_embeddings * (text_gate_values / gate_sum)
-
-        return torch.cat([image_weighted, text_weighted], dim=-1)
+        return torch.cat([image_weighted, text_weighted], dim=1)

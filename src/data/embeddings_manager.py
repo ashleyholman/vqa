@@ -54,6 +54,7 @@ class EmbeddingsManager:
         self.num_dataloader_workers = num_dataloader_workers
         self.DATA_DIR = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '../../data'))
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        self.embedding_sizes = {}
 
         print(f"EmbeddingsManager using {self.num_dataloader_workers} DataLoader workers.")
 
@@ -72,8 +73,9 @@ class EmbeddingsManager:
             return loaded_embeddings
         else:
             # Stored embeddings aren't present on disk.  Generate them now.
-            print(f'No {modality} embeddings found on disk.  Generating...')
-            return self.generate_and_save_text_embeddings(modality, inputs)
+            model_name = self.config.input_embedding_model_names[modality].split('/')[-1]
+            print(f'{modality} embeddings not found on disk for model "{model_name}".  Generating...')
+            return self.generate_and_save_text_embeddings(dataset_type, modality, inputs)
 
     def generate_and_save_text_embeddings(self, dataset_type, modality, inputs) -> None:
         if modality == 'text':
@@ -99,3 +101,29 @@ class EmbeddingsManager:
             embeddings = torch.cat(embeddings)
             torch.save(embeddings, save_path)
             return embeddings
+
+    def get_embedding_size(self, modality):
+        if modality in self.embedding_sizes:
+            # If the size is already in the cache, return it
+            return self.embedding_sizes[modality]
+
+        # If the size isn't in the cache, we need to calculate it
+        if modality == 'text':
+            model = BertModel.from_pretrained(self.config.input_embedding_model_names['text'])
+            dummy_input = torch.zeros(1, model.config.max_position_embeddings).long().to(self.device)  # Creating a dummy input
+        elif modality == 'vision':
+            model = ViTModel.from_pretrained(self.config.input_embedding_model_names['vision'])
+            dummy_input = torch.zeros(1, 3, model.config.image_size, model.config.image_size).to(self.device)  # Creating a dummy input
+        else:
+            raise ValueError(f'Unsupported modality: {modality}')
+
+        model.eval().to(self.device)
+        with torch.no_grad():
+            output = model(dummy_input)
+            embedding_size = output['pooler_output'].size(-1)
+
+        # Cache the size for future use
+        self.embedding_sizes[modality] = embedding_size
+        print(f"EmbeddingsManager: {modality} embedding size: {embedding_size}")
+
+        return embedding_size
