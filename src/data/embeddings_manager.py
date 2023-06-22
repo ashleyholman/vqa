@@ -66,7 +66,7 @@ class EmbeddingsManager:
         file_path = self.__get_embeddings_file_path(dataset_type, modality)
         if os.path.exists(file_path):
             print(f'Loading {modality} embeddings from {file_path}')
-            loaded_data = torch.load(file_path)
+            loaded_data = torch.load(file_path, map_location=torch.device('cpu'))
             embeddings = loaded_data['embeddings']
             input_indices = loaded_data['input_indices']
             # reconstruct the embeddings with duplicates in the order of the original input list
@@ -79,9 +79,9 @@ class EmbeddingsManager:
             # Stored embeddings aren't present on disk.  Generate them now.
             model_name = self.config.input_embedding_model_names[modality].split('/')[-1]
             print(f'{modality} embeddings for {dataset_type} dataset not found on disk for model "{model_name}".  Generating...')
-            return self.generate_and_save_text_embeddings(dataset_type, modality, inputs)
+            return self.generate_and_save_embeddings(dataset_type, modality, inputs)
 
-    def generate_and_save_text_embeddings(self, dataset_type, modality, inputs) -> None:
+    def generate_and_save_embeddings(self, dataset_type, modality, inputs) -> None:
         # de-duplicate the inputs so that we avoid processing the same inputs multiple times.
         # this will save a lot of time, eg. VQA training dataset size is 443k
         # questions, but there are only 82k unique images.
@@ -121,12 +121,11 @@ class EmbeddingsManager:
                     print(f"{batch_counter}/{total_batches} batches processed...")
 
             embeddings = torch.cat(embeddings)
-            torch.save(embeddings, save_path)
 
             # save both the unique embeddings and the indices needed for
             # reconstruting an embeddings list that matches the original
             # the dataset's inputs.
-            torch.save({'embeddings': embeddings, 'input_indices': input_indices}, save_path)
+            torch.save({'embeddings': embeddings.cpu(), 'input_indices': input_indices}, save_path)
 
             # reconstruct the embeddings with duplicates
             input_embeddings = embeddings[input_indices]
