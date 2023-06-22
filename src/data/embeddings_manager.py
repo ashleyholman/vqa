@@ -66,11 +66,15 @@ class EmbeddingsManager:
         file_path = self.__get_embeddings_file_path(dataset_type, modality)
         if os.path.exists(file_path):
             print(f'Loading {modality} embeddings from {file_path}')
-            loaded_embeddings = torch.load(file_path)
+            loaded_data = torch.load(file_path)
+            embeddings = loaded_data['embeddings']
+            input_indices = loaded_data['input_indices']
+            # reconstruct the embeddings with duplicates in the order of the original input list
+            input_embeddings = embeddings[input_indices]
             # loaded embeddings size should be of length of inputs
-            if len(loaded_embeddings) != len(inputs):
-                raise ValueError(f'Loaded embeddings size ({len(loaded_embeddings)}) does not match inputs size ({len(inputs)})')
-            return loaded_embeddings
+            if len(input_embeddings) != len(inputs):
+                raise ValueError(f'Loaded embeddings size ({len(input_embeddings)}) does not match inputs size ({len(inputs)})')
+            return input_embeddings
         else:
             # Stored embeddings aren't present on disk.  Generate them now.
             model_name = self.config.input_embedding_model_names[modality].split('/')[-1]
@@ -78,12 +82,20 @@ class EmbeddingsManager:
             return self.generate_and_save_text_embeddings(dataset_type, modality, inputs)
 
     def generate_and_save_text_embeddings(self, dataset_type, modality, inputs) -> None:
+        # de-duplicate the inputs so that we avoid processing the same inputs multiple times.
+        # this will save a lot of time, eg. VQA training dataset size is 443k
+        # questions, but there are only 82k unique images.
+        # In order to generate an embeddings list that matches the original
+        # dataset, we store the input indices as well
+        unique_inputs, input_indices = np.unique(inputs, return_inverse=True)
+        print(f"Original dataset inputs deduped from {len(inputs)} down to {len(unique_inputs)} inputs ({(1-(len(unique_inputs)/len(inputs))) * 100:.2f}% reduction).")
+
         if modality == 'text':
-            dataset = BertTokenizingDataset(self.config, inputs)
-            model = BertModel.from_pretrained(self.config.input_embedding_model_names['text'])
+            dataset = BertTokenizingDataset(self.config, unique_inputs)
+            model = BertModel.from_pretrained(self.config.input_embedding_model_names['text']).to(self.device)
         elif modality == 'vision':
-            dataset = ViTPreProcessingDataset(self.config, inputs)
-            model = ViTModel.from_pretrained(self.config.input_embedding_model_names['vision'])
+            dataset = ViTPreProcessingDataset(self.config, unique_inputs)
+            model = ViTModel.from_pretrained(self.config.input_embedding_model_names['vision']).to(self.device)
         else:
             raise ValueError(f'Unsupported modality: {modality}')
 
@@ -95,12 +107,31 @@ class EmbeddingsManager:
         model.eval()
         with torch.no_grad():
             embeddings = []
+            total_batches = len(dataloader)
+            batch_counter = 0
             for batch in dataloader:
+                # send batch to device
+                batch = {k: v.to(self.device) for k, v in batch.items()}
+                # run model
                 output = model(**batch)
                 embeddings.append(output['pooler_output'])
+
+                batch_counter += 1
+                if batch_counter % 50 == 0:
+                    print(f"{batch_counter}/{total_batches} batches processed...")
+
             embeddings = torch.cat(embeddings)
             torch.save(embeddings, save_path)
-            return embeddings
+
+            # save both the unique embeddings and the indices needed for
+            # reconstruting an embeddings list that matches the original
+            # the dataset's inputs.
+            torch.save({'embeddings': embeddings, 'input_indices': input_indices}, save_path)
+
+            # reconstruct the embeddings with duplicates
+            input_embeddings = embeddings[input_indices]
+
+            return input_embeddings
 
     def get_embedding_size(self, modality):
         if modality in self.embedding_sizes:

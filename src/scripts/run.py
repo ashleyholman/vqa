@@ -256,7 +256,7 @@ class Run:
                     performance_tracker = performance_tracker_reusable
                     performance_tracker.reset()
 
-                print("Begin training...")
+                print("Training...")
                 model_trainer.train_one_epoch(performance_tracker)
 
                 elapsed_time = time.time() - start_time
