@@ -49,21 +49,20 @@ class EmbeddingsManager:
     Generates embeddings for a given dataset, caches them on disk and provides
     them to callers.
     '''
-    def __init__(self, config: ModelConfiguration, dataset_type, num_dataloader_workers):
+    def __init__(self, config: ModelConfiguration, num_dataloader_workers):
         self.config = config
-        self.dataset_type = dataset_type
         self.num_dataloader_workers = num_dataloader_workers
-        self.DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), '../../data')
+        self.DATA_DIR = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '../../data'))
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
         print(f"EmbeddingsManager using {self.num_dataloader_workers} DataLoader workers.")
 
-    def __get_embeddings_file_path(self, modality) -> str:
+    def __get_embeddings_file_path(self, dataset_type, modality) -> str:
         model_name = self.config.input_embedding_model_names[modality].split('/')[-1]
-        return os.path.join(self.DATA_DIR, f'{self.dataset_type}_{modality}_embeddings.{model_name}.pt')
+        return os.path.join(self.DATA_DIR, f'{dataset_type}_{modality}_embeddings.{model_name}.pt')
 
-    def get_embeddings(self, modality, inputs) -> torch.Tensor:
-        file_path = self.__get_embeddings_file_path(modality)
+    def get_embeddings(self, dataset_type, modality, inputs) -> torch.Tensor:
+        file_path = self.__get_embeddings_file_path(dataset_type, modality)
         if os.path.exists(file_path):
             print(f'Loading {modality} embeddings from {file_path}')
             loaded_embeddings = torch.load(file_path)
@@ -76,7 +75,7 @@ class EmbeddingsManager:
             print(f'No {modality} embeddings found on disk.  Generating...')
             return self.generate_and_save_text_embeddings(modality, inputs)
 
-    def generate_and_save_text_embeddings(self, modality, inputs) -> None:
+    def generate_and_save_text_embeddings(self, dataset_type, modality, inputs) -> None:
         if modality == 'text':
             dataset = BertTokenizingDataset(self.config, inputs)
             model = BertModel.from_pretrained(self.config.input_embedding_model_names['text'])
@@ -88,8 +87,8 @@ class EmbeddingsManager:
 
         dataloader = DataLoader(dataset, batch_size=32, num_workers=self.num_dataloader_workers)
 
-        save_path = self.__get_embeddings_file_path(modality)
-        print(f'Generating and saving {modality} embeddings to {save_path}')
+        save_path = self.__get_embeddings_file_path(dataset_type, modality)
+        print(f'Generating and saving {modality} embeddings for {dataset_type} dataset to {save_path}...')
 
         model.eval()
         with torch.no_grad():
