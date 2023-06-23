@@ -1,5 +1,5 @@
 ###### model name ######
-model_name: 'vithuge_unweighted_answerembed_2hidden_hs1000_dropout_batchnorm_gated'
+model_name: 'vitbase_unweighted_answerembed_2hidden_hs1000_dropout_batchnorm_gated'
 
 ###### model architecture-related settings ######
 num_hidden_layers: 2
@@ -14,7 +14,7 @@ use_gating: true
 
 ###### models to use for input embeddings ######
 input_embedding_model_names:
-  vision: 'google/vit-huge-patch14-224-in21k'
+  vision: 'google/vit-base-patch16-224-in21k'
   text: 'bert-base-uncased'
 
 ###### training-related hyperparameters ######
