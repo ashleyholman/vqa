@@ -1,14 +1,29 @@
 import React from 'react';
 import './Config.css';
 
+function flattenConfig(data, prefix = '') {
+  let result = {};
+  for (let key in data) {
+    if (typeof data[key] === 'object' && data[key] !== null && !Array.isArray(data[key])) {
+      let nested = flattenConfig(data[key], `${prefix}${key} >> `);
+      result = {...result, ...nested};
+    } else {
+      result[`${prefix}${key}`] = data[key];
+    }
+  }
+  return result;
+}
+
 function Config({ configData }) {
   if (!configData) {
     return <div>Loading...</div>;
   }
 
+  const flattenedConfig = flattenConfig(configData);
+
   return (
     <div className="config-container">
-      {Object.entries(configData).map(([key, value], idx) => {
+      {Object.entries(flattenedConfig).map(([key, value], idx) => {
         if (key === 'model_name') {
           return null;
         }
