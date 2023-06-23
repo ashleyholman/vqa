@@ -210,6 +210,10 @@ class Run:
             print("Answer substitutions: ", self.training_dataset.answer_substitutions)
             self.model = VQAModel(self.config, self.embeddings_manager, self.training_dataset.answer_classes)
 
+            # count model parameters for storing in the run record.
+            model_parameter_count = sum(p.numel() for p in self.model.parameters() if p.requires_grad)
+            print("Model parameter count: ", model_parameter_count)
+
             # Create a new optimizer
             self.optimizer = Adam(self.model.parameters(), lr=self.config.learning_rate)
 
@@ -219,7 +223,8 @@ class Run:
             # for a new run, store the answer_classes and substitutions in the run record
             column_values = {
                 'answer_classes': self.training_dataset.answer_classes,
-                'answer_substitutions' : self.training_dataset.answer_substitutions
+                'answer_substitutions' : self.training_dataset.answer_substitutions,
+                'model_parameter_count': model_parameter_count
             }
             self.run_manager.update_run(self.run_id, column_values)
 

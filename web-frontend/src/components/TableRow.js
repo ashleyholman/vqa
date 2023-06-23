@@ -20,6 +20,16 @@ function TableRow({ run }) {
     setConfigVisible(!isConfigVisible);
   };
 
+  function formatParamCount(count) {
+    if (count >= 1e6) {
+      return (count / 1e6).toFixed(2) + 'M';
+    } else if (count >= 1e3) {
+      return (count / 1e3).toFixed(2) + 'K';
+    } else {
+      return count.toString();
+    }
+  }
+
   return (
     <>
       <tr className={isMiniRun ? 'mini-run' : ''}>
@@ -38,6 +48,7 @@ function TableRow({ run }) {
           <td>{run.run_status}</td>
         )}
         <td>{num_epochs}</td>
+        <td>{formatParamCount(run['model_parameter_count'])}</td>
         <td>{run['final_accuracy'].toFixed(2)}</td>
         <td>{run['final_top_5_accuracy'].toFixed(2)}</td>
         <td>{run['final_f1_score_macro'].toFixed(2)}</td>

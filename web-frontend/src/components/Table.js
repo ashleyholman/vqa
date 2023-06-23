@@ -65,6 +65,7 @@ function Table({ data }) {
             <th onClick={() => handleSort('started_at')}><div className="header-div">Timestamp {renderSortArrow('started_at')}</div></th>
             <th onClick={() => handleSort('run_status')}><div className="header-div">Status {renderSortArrow('run_status')}</div></th>
             <th onClick={() => handleSort('num_trained_epochs')}><div className="header-div">Num Epochs {renderSortArrow('num_trained_epochs')}</div></th>
+            <th onClick={() => handleSort('parameter_count')}><div className="header-div">Parameter Count {renderSortArrow('parameter_count')}</div></th>
             <th onClick={() => handleSort('final_accuracy')}><div className="header-div">Accuracy {renderSortArrow('final_accuracy')}</div></th>
             <th onClick={() => handleSort('final_top_5_accuracy')}><div className="header-div">Top 5 Accuracy {renderSortArrow('final_top_5_accuracy')}</div></th>
             <th onClick={() => handleSort('final_f1_score_macro')}><div className="header-div">F1 Macro {renderSortArrow('final_f1_score_macro')}</div></th>

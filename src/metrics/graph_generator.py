@@ -146,6 +146,12 @@ class GraphGenerator():
                 index_entry[key] = run[key]
             index_entry['num_trained_epochs'] = max_trained_epoch
 
+            # add model parameter count (not all run records have this)
+            if ('model_parameter_count' in run):
+                index_entry['model_parameter_count'] = run['model_parameter_count']
+            else:
+                index_entry['model_parameter_count'] = 'Unknown'
+
             # copy the last epoch's validation metrics to final_* entries
             for key, value in metrics[max_trained_epoch].items():
                 if key.startswith(metrics_prefix):
