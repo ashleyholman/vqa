@@ -2,7 +2,7 @@
 model_name: 'vitbase_unweighted_answerembed_2hidden_hs1000_dropout_batchnorm_gated'
 
 ###### model architecture-related settings ######
-num_hidden_layers: 2
+num_hidden_layers: 1
 hidden_size: 1000
 use_answer_embeddings: false
 use_answer_embedding_z_normalization: true
