@@ -1,8 +1,8 @@
 ###### model name ######
-model_name: 'vitbase_unweighted_0hidden_dropout_batchnorm_gated'
+model_name: 'vitbase_unweighted_1hidden_hs1000_dropout_batchnorm'
 
 ###### model architecture-related settings ######
-num_hidden_layers: 0
+num_hidden_layers: 1
 hidden_size: 1000
 use_answer_embeddings: false
 use_answer_embedding_z_normalization: true
@@ -10,7 +10,7 @@ use_dropout: true
 dropout_input_probability: 0.2
 dropout_hidden_probability: 0.5
 use_batch_normalization: true
-use_gating: true
+use_gating: false
 
 ###### models to use for input embeddings ######
 input_embedding_model_names:
