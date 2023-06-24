@@ -27,3 +27,7 @@
 - Speed up generate_web_json.py.  Avoid fetching metrics for runs that we don't
   need to update.  Also add explicit --run-id option for single run update only.
 - Add pending runs and ability to auto-scaledown ASG when no pending runs remaining
+- Rethink the whole json generation -> local react -> web deploy system
+  * generation taking too long, rewriting too much, fetching ddb too much
+  * upload to S3 too slow and syncing rewrites too many existing files
+- Make ops tool for changing run record attributes (eg. change run_status)
