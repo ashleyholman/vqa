@@ -1,16 +1,16 @@
 ###### model name ######
-model_name: 'vitbase_1e3_unweighted_1hidden_hs750_dropout_batchnorm_gated'
+model_name: 'vitbase_1e5_unweighted_1hidden_hs1000_dropout_batchnorm'
 
 ###### model architecture-related settings ######
 num_hidden_layers: 1
-hidden_size: 750
+hidden_size: 1000
 use_answer_embeddings: false
 use_answer_embedding_z_normalization: true
 use_dropout: true
 dropout_input_probability: 0.2
 dropout_hidden_probability: 0.5
 use_batch_normalization: true
-use_gating: true
+use_gating: false
 
 ###### models to use for input embeddings ######
 input_embedding_model_names:
@@ -19,7 +19,7 @@ input_embedding_model_names:
 
 ###### training-related hyperparameters ######
 batch_size: 5000
-learning_rate: 3.e-5
+learning_rate: 1.e-5
 shuffle: true
 
 ###### loss-function parameters ######
@@ -31,7 +31,7 @@ merge_singular_plural_answer_classes: true
 ###### epoch-related settings ######
 
 # max_epochs: Training will cut off here if it hasn't already cut-off from another condition.
-max_epochs: 1000
+max_epochs: 500
 
 # snapshot_every_epochs: How frequently to take a snapshot.  This will be the
 # restore point if our run is interrupted, for example by spot instance eviction.
