@@ -1,9 +1,9 @@
 ###### model name ######
-model_name: 'vitbase_3e5_unweighted_2hidden_hs750_dropout_batchnorm'
+model_name: 'vitbase_3e5_unweighted_0hidden_hs1500_dropout_batchnorm'
 
 ###### model architecture-related settings ######
-num_hidden_layers: 2
-hidden_size: 750
+num_hidden_layers: 0
+hidden_size: 1500
 use_answer_embeddings: false
 use_answer_embedding_z_normalization: true
 use_dropout: true
