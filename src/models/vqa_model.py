@@ -9,8 +9,6 @@ from src.models.gated_multi_model_unit import GatedMultiModalUnit
 from src.models.model_configuration import ModelConfiguration
 
 class VQAModel(nn.Module):
-    INPUT_EMBEDDINGS_SIZE = 768
-
     def __init__(self, config: ModelConfiguration, embeddings_manager: EmbeddingsManager, answer_classes_text=None):
         super().__init__()
         self.config = config
