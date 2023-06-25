@@ -1,5 +1,5 @@
 ###### model name ######
-model_name: 'vitbase_1e5_unweighted_1hidden_hs1536_dropout_batchnorm_notransform'
+model_name: 'vitbase_1e5_unweighted_1hidden_hs1536_dropout_batchnorm'
 
 ###### model architecture-related settings ######
 num_hidden_layers: 1
@@ -12,7 +12,7 @@ dropout_hidden_probability: 0.5
 use_batch_normalization: true
 use_gating: false
 # whether to include a linear transform layer for each input embedding before combining them.
-transform_input_embeddings: false
+transform_input_embeddings: true
 
 ###### models to use for input embeddings ######
 input_embedding_model_names:
