@@ -32,12 +32,12 @@ function MetricChart({ title, data, metricName, isMiniRun }) {
     ];
   }
 
-  const allValues = data.flatMap(d => metrics.map(m => d[m.name]));
+  const allValues = data.flatMap(d => metrics.map(m => d[m.name])).filter(val => !isNaN(val));
   const minVal = Math.floor(Math.min(...allValues));
   const maxVal = Math.ceil(Math.max(...allValues));
-  const yticks = Array.from({ length: maxVal - minVal + 1 }, (_, i) => Math.round(minVal + i).toFixed(0));
+  const yticks = Array.from({ length: maxVal - minVal + 1 }, (_, i) => minVal + i);
   const domain = [minVal, maxVal];
-
+  
   const CustomTooltip = ({ active, payload, label }) => {
     if (active && payload && payload.length) {
       return (
