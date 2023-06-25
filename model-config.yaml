@@ -1,8 +1,8 @@
 ###### model name ######
-model_name: 'vitbase_1e5_unweighted_1hidden_hs1000_dropout_batchnorm_notransform'
+model_name: 'vitbase_1e5_unweighted_2hidden_hs1000_dropout_batchnorm_notransform'
 
 ###### model architecture-related settings ######
-num_hidden_layers: 1
+num_hidden_layers: 2
 hidden_size: 1000
 use_answer_embeddings: false
 use_answer_embedding_z_normalization: true
@@ -33,7 +33,7 @@ merge_singular_plural_answer_classes: true
 ###### epoch-related settings ######
 
 # max_epochs: Training will cut off here if it hasn't already cut-off from another condition.
-max_epochs: 800
+max_epochs: 1000
 
 # snapshot_every_epochs: How frequently to take a snapshot.  This will be the
 # restore point if our run is interrupted, for example by spot instance eviction.
