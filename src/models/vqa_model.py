@@ -16,8 +16,9 @@ class VQAModel(nn.Module):
         self.image_embedding_size = embeddings_manager.get_embedding_size('vision')
         self.text_embedding_size = embeddings_manager.get_embedding_size('text')
 
-        self.image_transform = nn.Linear(self.image_embedding_size, self.image_embedding_size)
-        self.question_transform = nn.Linear(self.text_embedding_size, self.text_embedding_size)
+        if self.config.transform_input_embeddings:
+          self.image_transform = nn.Linear(self.image_embedding_size, self.image_embedding_size)
+          self.question_transform = nn.Linear(self.text_embedding_size, self.text_embedding_size)
 
         if self.config.use_gating:
             self.gated_unit = GatedMultiModalUnit(self.image_embedding_size, self.text_embedding_size)
@@ -91,8 +92,9 @@ class VQAModel(nn.Module):
             self.answer_embeddings = answer_embeddings
 
     def forward(self, image_embeddings, question_embeddings):
-        image_embeddings = self.image_transform(image_embeddings)
-        question_embeddings = self.question_transform(question_embeddings)
+        if self.config.transform_input_embeddings:
+          image_embeddings = self.image_transform(image_embeddings)
+          question_embeddings = self.question_transform(question_embeddings)
 
         if self.config.use_gating:
             # use a weighted combination of the image and question embeddings
