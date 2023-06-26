@@ -1,5 +1,5 @@
 ###### model name ######
-model_name: 'vitbase_bertlarge_1e5_unweighted_1hidden_hs1536_dropout_batchnorm'
+model_name: 'vitbase_bertlarge_1e5_1hidden_hs1536_transform768'
 
 ###### model architecture-related settings ######
 num_hidden_layers: 1
@@ -13,6 +13,9 @@ use_batch_normalization: true
 use_gating: false
 # whether to include a linear transform layer for each input embedding before combining them.
 transform_input_embeddings: true
+# size of the output of the linear transform layer for each input embedding.
+# transform_input_embeddings_to_size: [smallest|largest|preserve|<int>]
+transform_input_embeddings_to_size: smallest
 
 ###### models to use for input embeddings ######
 input_embedding_model_names:

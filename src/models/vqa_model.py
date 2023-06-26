@@ -17,8 +17,16 @@ class VQAModel(nn.Module):
         self.text_embedding_size = embeddings_manager.get_embedding_size('text')
 
         if self.config.transform_input_embeddings:
-          self.image_transform = nn.Linear(self.image_embedding_size, self.image_embedding_size)
-          self.question_transform = nn.Linear(self.text_embedding_size, self.text_embedding_size)
+          transformed_image_embedding_size, transformed_text_embedding_size = self.get_embeddings_transform_output_sizes()
+          self.image_transform = nn.Linear(self.image_embedding_size, transformed_image_embedding_size)
+          self.question_transform = nn.Linear(self.text_embedding_size, transformed_text_embedding_size)
+
+          print(f"Transforming image embeddings from {self.image_embedding_size} to {transformed_image_embedding_size}")
+          print(f"Transforming text embeddings from {self.text_embedding_size} to {transformed_text_embedding_size}")
+
+          # update self.image_embedding_size / self.text_embedding_size to reflect the transformed sizes
+          self.image_embedding_size = transformed_image_embedding_size
+          self.text_embedding_size = transformed_text_embedding_size
 
         if self.config.use_gating:
             self.gated_unit = GatedMultiModalUnit(self.image_embedding_size, self.text_embedding_size)
@@ -55,6 +63,21 @@ class VQAModel(nn.Module):
         print("head_input_size:", head_input_size)
         print("head_output_size:", head_output_size)
         self.head = nn.Linear(head_input_size, head_output_size)
+
+    def get_embeddings_transform_output_sizes(self):
+        if self.config.transform_input_embeddings_to_size == "smallest":
+            image_output_size = text_output_size = min(self.image_embedding_size, self.text_embedding_size)
+        elif self.config.transform_input_embeddings_to_size == "largest":
+            image_output_size = text_output_size = max(self.image_embedding_size, self.text_embedding_size)
+        elif self.config.transform_input_embeddings_to_size == "preserve":
+            image_output_size = self.image_embedding_size
+            text_output_size = self.text_embedding_size
+        elif isinstance(self.config.transform_input_embeddings_to_size, int):
+            image_output_size = text_output_size = self.config.transform_input_embeddings_to_size
+        else:
+            raise ValueError("Invalid value for transform_input_embeddings_to_size: {}".format(self.config.transform_input_embeddings_to_size))
+
+        return image_output_size, text_output_size
 
     def _build_hidden_layers(self):
         # Add first hidden layer (input size is different, since it takes the embeddings as input)
