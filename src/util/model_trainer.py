@@ -76,9 +76,14 @@ class ModelTrainer:
 
         return torch.nn.CrossEntropyLoss(**loss_args)
 
-    def train_one_epoch(self, performance_tracker=None):
+    def train_one_epoch(self, performance_tracker=None, no_progress_bar=True):
+        # Wrap data_loader with tqdm to show a progress bar, unless --no-progress-bar was specified
+        dataloader = self.dataloader
+        if not no_progress_bar:
+            dataloader = tqdm(dataloader)
+
         self.model.train()
-        for idx, batch in enumerate(self.dataloader, start=1):
+        for idx, batch in enumerate(dataloader, start=1):
             # Transfer data to the appropriate device
             if self.config.finetune_from_snapshot:
                 # send image and text features to the device

@@ -268,7 +268,7 @@ class Run:
                     performance_tracker.reset()
 
                 print("Training...")
-                model_trainer.train_one_epoch(performance_tracker)
+                model_trainer.train_one_epoch(performance_tracker, no_progress_bar=self.no_progress_bar)
 
                 elapsed_time = time.time() - start_time
                 print(f"Epoch {epoch} completed training at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}, took {elapsed_time/60:.2f} minutes.")
