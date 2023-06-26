@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from transformers import BertTokenizer, BertModel
+from transformers import BertTokenizer, BertModel, ViTModel
 
 from src.data.embeddings_manager import EmbeddingsManager
 from src.models.gated_multi_model_unit import GatedMultiModalUnit
@@ -12,6 +12,11 @@ class VQAModel(nn.Module):
     def __init__(self, config: ModelConfiguration, embeddings_manager: EmbeddingsManager, answer_classes_text=None):
         super().__init__()
         self.config = config
+
+        if config.finetune_from_snapshot:
+            # When finetuning, we include the full bert and vit models in our model
+            self.bert = BertModel.from_pretrained(self.config.input_embedding_model_names['text'])
+            self.vit = ViTModel.from_pretrained(self.config.input_embedding_model_names['vision'])
 
         self.image_embedding_size = embeddings_manager.get_embedding_size('vision')
         self.text_embedding_size = embeddings_manager.get_embedding_size('text')
@@ -114,7 +119,17 @@ class VQAModel(nn.Module):
                 answer_embeddings = F.normalize(answer_embeddings)
             self.answer_embeddings = answer_embeddings
 
-    def forward(self, image_embeddings, question_embeddings):
+    def forward(self, input):
+        if self.config.finetune_from_snapshot:
+          image_embeddings = self.vit(input['image']).pooler_output
+          question_embeddings = self.bert(input_ids=input['input_ids'], attention_mask=input['attention_mask']).pooler_output
+        else:
+            # when not finetuning, our input is pre-computed embeddings from
+            # vit/bert which is an optimisation that saves having to compute the
+            # vit/bert embeddings in the forward pass
+            image_embeddings = input['image_embedding']
+            question_embeddings = input['question_embedding']
+
         if self.config.transform_input_embeddings:
           image_embeddings = self.image_transform(image_embeddings)
           question_embeddings = self.question_transform(question_embeddings)

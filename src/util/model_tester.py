@@ -12,6 +12,7 @@ class ModelTester:
     def __init__(self, config, dataset, num_dataloader_workers):
         self.config = config
         self.dataset = dataset
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
         # Create a DataLoader to handle batching of the dataset
         self.dataloader = DataLoader(dataset, batch_size=config.batch_size, num_workers=num_dataloader_workers, shuffle=config.shuffle)
@@ -29,12 +30,18 @@ class ModelTester:
         with torch.no_grad():
             for idx, batch in enumerate(dataloader, start=1):
                 # Transfer data to the appropriate device
-                question_embeddings = batch["question_embedding"].to(device)
-                image_embeddings = batch["image_embedding"].to(device)
+                if self.config.finetune_from_snapshot:
+                    batch["image"] = batch["image"].to(self.device)
+                    batch["input_ids"] = batch["input_ids"].to(self.device)
+                    batch["attention_mask"] = batch["attention_mask"].to(self.device)
+                else:
+                    batch["image_embedding"] = batch["image_embedding"].to(self.device)
+                    batch["question_embedding"] = batch["question_embedding"].to(self.device)
+
                 labels = batch["label"].to(device)
 
                 # Run the model and get the predictions
-                logits = model(image_embeddings, question_embeddings)
+                logits = model(batch)
 
                 # Calculate the loss
                 loss = cross_entropy(logits, labels)

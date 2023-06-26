@@ -157,9 +157,21 @@ class Run:
         if self.snapshot_name:
             print(f"Resuming run '{self.run_id}' from epoch {self.start_epoch} with snapshot '{self.snapshot_name}'")
             snapshot = self.snapshot_manager.load_snapshot(self.snapshot_name, self.training_dataset_type, self.device)
+
+            # The epoch number stored in the snapshot represents
+            # the last completed training epoch, so resume training from epoch+1
+            self.start_epoch = snapshot.get_metadata()["epoch"]+1
+            if (self.start_epoch > self.config.max_epochs):
+                print(f"Snapshot '{snapshot.get_name()}' already trained for {self.start_epoch-1} epochs.  Nothing to do.")
+                return
+        elif self.config.finetune_from_snapshot:
+            print(f"Beginning finetuning run from snapshot '{self.config.finetune_from_snapshot}'")
+            snapshot = self.snapshot_manager.load_snapshot(self.config.finetune_from_snapshot, self.training_dataset_type, self.device, for_finetuning=True)
+            self.start_epoch = 1
         else:
             print(f"Starting new run '{self.run_id}' from epoch {self.start_epoch}")
             snapshot = None
+            self.start_epoch = 1
 
         num_dataloader_workers = args.num_dataloader_workers
 
@@ -174,10 +186,6 @@ class Run:
                 print(f"ERROR: Dataset type '{self.training_dataset_type}' does not match the dataset type in the snapshot '{snapshot.get_metadata()['dataset_type']}'.")
                 return
 
-            if (snapshot.get_metadata()["model_version"] != self.config.model_name):
-                print(f"ERROR: Model name '{self.config.model_name}' does not match the model name in the snapshot '{snapshot.get_metadata()['model_name']}'.")
-                return
-
             print(f"Using snapshot: {snapshot.get_name()}")
             self.training_dataset = snapshot.get_dataset()
             self.model = snapshot.get_model()
@@ -186,20 +194,13 @@ class Run:
             print("Resuming with answer classes: ", self.training_dataset.answer_classes)
             print("Resuming with answer substitutions: ", self.training_dataset.answer_substitutions)
 
-            # The epoch number stored in the snapshot represents
-            # the last completed training epoch, so resume training from epoch+1
-            start_epoch = snapshot.get_metadata()["epoch"]+1
-            if (start_epoch > self.config.max_epochs):
-                print(f"Snapshot '{snapshot.get_name()}' already trained for {start_epoch-1} epochs.  Nothing to do.")
-                return
-
             if (snapshot.isLightweight()):
                 print(f"WARNING: Snapshot '{snapshot.get_name()}' is lightweight, meaning the pretrained "
                       "weights of the BERT and ViT models are not included in the snapshot.  Those models "
                       "will be initialized from huggingface.  If the underlying weights of these models "
                       "have changed since the snapshot was created, the model may not train correctly.")
 
-            print(f"Resuming training from epoch {start_epoch}.")
+            print(f"Resuming training from epoch {self.start_epoch}.")
         else:
             # load training dataset
             print("Loading training dataset...")
@@ -218,7 +219,7 @@ class Run:
             self.optimizer = Adam(self.model.parameters(), lr=self.config.learning_rate)
 
             # epoch's are 1-indexed for ease of understanding by the user
-            start_epoch = 1
+            self.start_epoch = 1
 
             # for a new run, store the answer_classes and substitutions in the run record
             column_values = {
@@ -239,7 +240,11 @@ class Run:
 
         # Load the validation dataset, using the same answer classes and substitutions as used in training.
         print("Loading validation dataset...")
-        self.validation_dataset = VQADataset(self.config, self.embeddings_manager, self.validation_dataset_type, num_dataloader_workers, (self.training_dataset.answer_classes, self.training_dataset.answer_substitutions))
+        if self.config.finetune_from_snapshot:
+            finetuning_params = { 'with_input_ids': True, 'with_image_features': True, 'with_embeddings': False }
+        else:
+            finetuning_params = { 'with_input_ids': False, 'with_image_features': False, 'with_embeddings': True }
+        self.validation_dataset = VQADataset(self.config, self.embeddings_manager, self.validation_dataset_type, num_dataloader_workers, (self.training_dataset.answer_classes, self.training_dataset.answer_substitutions), **finetuning_params)
 
         model_trainer = ModelTrainer(self.config, self.model, self.training_dataset, self.optimizer, num_dataloader_workers)
         model_tester = ModelTester(self.config, self.validation_dataset, num_dataloader_workers)
@@ -247,7 +252,7 @@ class Run:
         error_analysis_s3_url = None
 
         try:
-            for epoch in range(start_epoch, self.config.max_epochs+1):
+            for epoch in range(self.start_epoch, self.config.max_epochs+1):
                 print(f"Epoch {epoch}/{self.config.max_epochs}")
 
                 is_snapshot_epoch = (epoch % self.config.snapshot_every_epochs == 0)

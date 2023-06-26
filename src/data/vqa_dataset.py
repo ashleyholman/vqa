@@ -34,7 +34,7 @@ class VQADataset(Dataset):
     MINI_QUESTIONS_JSON_FILE_NAME = 'data/subset_questions.json'
     MINI_IMAGE_PREFIX = 'data/train2014/COCO_train2014_'
 
-    def __init__(self, config : ModelConfiguration, embeddings_manager: EmbeddingsManager, settype='train', num_dataloader_workers=1, answer_classes_and_substitutions=([], []), with_input_ids=False, with_images_features=False):
+    def __init__(self, config : ModelConfiguration, embeddings_manager: EmbeddingsManager, settype='train', num_dataloader_workers=1, answer_classes_and_substitutions=([], []), with_input_ids=False, with_image_features=False, with_embeddings=True):
         self.images = []
         self.input_ids = []
         self.attention_masks = []
@@ -49,7 +49,8 @@ class VQADataset(Dataset):
         self.image_paths = []
         self.image_count = 0
         self.with_input_ids = with_input_ids
-        self.with_images_features = with_images_features
+        self.with_image_features = with_image_features
+        self.with_embeddings = with_embeddings
         self.config = config
         self.embeddings_manager = embeddings_manager
 
@@ -116,10 +117,11 @@ class VQADataset(Dataset):
 
         # Load pre-processed embeddings for question texts and images.  EmbeddingsManager will
         # generate and store them if they don't already exist.
-        self.question_embeddings = self.embeddings_manager.get_embeddings(self.settype, 'text', self.question_texts)
-        self.image_embeddings = self.embeddings_manager.get_embeddings(self.settype, 'vision', self.image_paths)
+        if self.with_embeddings:
+            self.question_embeddings = self.embeddings_manager.get_embeddings(self.settype, 'text', self.question_texts)
+            self.image_embeddings = self.embeddings_manager.get_embeddings(self.settype, 'vision', self.image_paths)
 
-        print("Done initialising dataset")
+        print(f"Done initialising {self.settype} dataset.")
 
     # Our dataset has many answers per question, written by different humans.
     # But there's also an attribute called "multiple_choice_answer" which is the most common answer.
@@ -218,16 +220,32 @@ class VQADataset(Dataset):
         item = {
             'label': self.labels[idx],
             'question_id': self.question_ids[idx],
-            'image_id': self.image_ids[idx],
-            'image_embedding': self.image_embeddings[idx],
-            'question_embedding': self.question_embeddings[idx]
+            'image_id': self.image_ids[idx]
         }
+
+        if self.with_embeddings:
+            item['image_embedding'] = self.image_embeddings[idx]
+            item['question_embedding'] = self.question_embeddings[idx]
 
         if self.with_input_ids:
             item['input_ids'] = self.input_ids[idx]
             item['attention_mask'] = self.attention_masks[idx]
 
-        if self.with_images_features:
+        if self.with_image_features:
             item['image'] = self.preprocess_image(self.image_ids[idx])
 
         return item
+
+    @lru_cache(maxsize=1000)
+    def preprocess_image(self, image_id):
+        image_path = self.image_prefix + str(image_id).zfill(12) + '.jpg'
+
+        image = Image.open(image_path)
+        image = image.convert("RGB")
+
+        # Convert the image to a numpy array and pass it to the feature extractor
+        image = np.array(image)
+        features = self.vit_preprocessor(image, return_tensors='pt')
+
+        # return the pixel_values features
+        return features['pixel_values'].squeeze(0)

@@ -35,7 +35,7 @@ class VQASnapshotManager:
         # ensure caching dir exists
         os.makedirs(self.LOCAL_CACHE_DIR, exist_ok=True)
 
-    def load_snapshot(self, snapshot_name, dataset_type, device):
+    def load_snapshot(self, snapshot_name, dataset_type, device, for_finetuning=False):
         self._populate_cache(snapshot_name)
 
         # Load the metadata
@@ -43,7 +43,16 @@ class VQASnapshotManager:
             metadata = json.load(f)
 
         # Load dataset
-        dataset = VQADataset(self.config, self.embeddings_manager, settype=dataset_type,  answer_classes_and_substitutions=(metadata['answer_classes'], metadata['answer_substitutions']))
+        if self.config.finetune_from_snapshot:
+            # If `finetune_from_snapshot` is True, we are either starting a new finetuning run
+            # or resuming a previous one. In both cases, we need the model to train on input_ids
+            # and image features, not embeddings. That's why we check `finetune_from_snapshot`
+            # instead of `for_finetuning`. The latter is only True when starting a new finetuning run, 
+            # but not when resuming one.
+
+            dataset = VQADataset(self.config, self.embeddings_manager, settype=dataset_type,  answer_classes_and_substitutions=(metadata['answer_classes'], metadata['answer_substitutions']), with_input_ids=True, with_image_features=True, with_embeddings=False)
+        else:
+            dataset = VQADataset(self.config, self.embeddings_manager, settype=dataset_type,  answer_classes_and_substitutions=(metadata['answer_classes'], metadata['answer_substitutions']))
 
         # Initialize the model
         model = VQAModel(self.config, self.embeddings_manager, dataset.answer_classes)
@@ -51,7 +60,7 @@ class VQASnapshotManager:
         # Load model weights
         state_dict = torch.load(os.path.join(self.LOCAL_CACHE_DIR, snapshot_name, "model_weights.pth"), map_location=device)
 
-        model.load_state_dict(state_dict, strict=not metadata['lightweight'])
+        model.load_state_dict(state_dict, strict=not (metadata['lightweight'] or self.config.finetune_from_snapshot))
 
         # Move the model to the requested device.
         # We need to do this before initializing the optimizer so that the
@@ -59,16 +68,25 @@ class VQASnapshotManager:
         model.to(device)
 
         # Load the optimizer's state dict
-        optimizer_state_dict = None
-        if os.path.exists(os.path.join(self.LOCAL_CACHE_DIR, snapshot_name, "optimizer_state.pth")):
-            optimizer_state_dict = torch.load(os.path.join(self.LOCAL_CACHE_DIR, snapshot_name, "optimizer_state.pth"))
-        else:
-            raise InvalidSnapshotException(f"Snapshot '{snapshot_name}' does not contain an optimizer state dict.")
-
-        # Re-create the optimizer and load the state dict
         optimizer = Adam(model.parameters())
-        if optimizer_state_dict:
-            optimizer.load_state_dict(optimizer_state_dict)
+        
+        # We only restore the optimizer's state dict if we're not starting a new
+        # finetuning run. This is because the optimizer state of a
+        # `finetune_from_snapshot` snapshot (snapshot of a non-finetuned model)
+        # does not contain state for the BERT and ViT weights that we need to finetune.
+        # However, when resuming a finetuning run, we do restore the optimizer state,
+        # as it contains the state for the entire finetuned model, including the BERT
+        # and ViT weights.
+        if not for_finetuning:
+            optimizer_state_dict = None
+            if os.path.exists(os.path.join(self.LOCAL_CACHE_DIR, snapshot_name, "optimizer_state.pth")):
+                optimizer_state_dict = torch.load(os.path.join(self.LOCAL_CACHE_DIR, snapshot_name, "optimizer_state.pth"))
+            else:
+                raise InvalidSnapshotException(f"Snapshot '{snapshot_name}' does not contain an optimizer state dict.")
+
+            # Re-create the optimizer and load the state dict
+            if optimizer_state_dict:
+                optimizer.load_state_dict(optimizer_state_dict)
 
         return Snapshot(snapshot_name, model, dataset, optimizer, metadata)
 

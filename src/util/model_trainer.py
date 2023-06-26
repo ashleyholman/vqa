@@ -80,15 +80,23 @@ class ModelTrainer:
         self.model.train()
         for idx, batch in enumerate(self.dataloader, start=1):
             # Transfer data to the appropriate device
-            question_embeddings = batch["question_embedding"].to(self.device)
-            image_embeddings = batch["image_embedding"].to(self.device)
+            if self.config.finetune_from_snapshot:
+                # send image and text features to the device
+                batch["image"] = batch["image"].to(self.device)
+                batch["input_ids"] = batch["input_ids"].to(self.device)
+                batch["attention_mask"] = batch["attention_mask"].to(self.device)
+            else:
+                # send pre-computed embeddings to device
+                batch["image_embedding"] = batch["image_embedding"].to(self.device)
+                batch["question_embedding"] = batch["question_embedding"].to(self.device)
+
             labels = batch["label"].to(self.device)
 
             # Clear the gradients
             self.optimizer.zero_grad()
 
             # Forward pass
-            logits = self.model(image_embeddings, question_embeddings)
+            logits = self.model(batch)
             loss = self.loss_function(logits, labels)
 
             # Backward pass and optimize

@@ -1,5 +1,5 @@
 ###### model name ######
-model_name: 'vitbase_bertlarge_1e5_1hidden_hs1536_transform768'
+model_name: 'finetune_vitbase_bertbase_1e6_1hidden_hs1536'
 
 ###### model architecture-related settings ######
 num_hidden_layers: 1
@@ -13,19 +13,25 @@ use_batch_normalization: true
 use_gating: false
 # whether to include a linear transform layer for each input embedding before combining them.
 transform_input_embeddings: true
-# size of the output of the linear transform layer for each input embedding.
+# size of the output of the linear transform
 # transform_input_embeddings_to_size: [smallest|largest|preserve|<int>]
-transform_input_embeddings_to_size: smallest
+# - 'smallest' / 'largest': transform both embeddings to the size of the smallest / largest embedding
+# - 'preserve': transform each embedding to its original size, even if they are different sizes
+# - <int>: transform both embeddings to the specified size
+transform_input_embeddings_to_size: preserve
 
 ###### models to use for input embeddings ######
 input_embedding_model_names:
   vision: 'google/vit-base-patch16-224-in21k'
-  text: 'bert-large-uncased'
+  text: 'bert-base-uncased'
 
 ###### training-related hyperparameters ######
 batch_size: 5000
-learning_rate: 1.e-5
+learning_rate: 1.e-6
 shuffle: true
+# set a finetune_from_snapshot to resume training from a previous snapshot, with
+# the full vit and bert models included in the training.
+finetune_from_snapshot: 'snapshot_vitbase_1e5_unweighted_1hidden_hs1536_dropout_batchnorm_train_epoch_600_20230625_171524'
 
 ###### loss-function parameters ######
 use_class_weights: false
@@ -36,14 +42,14 @@ merge_singular_plural_answer_classes: true
 ###### epoch-related settings ######
 
 # max_epochs: Training will cut off here if it hasn't already cut-off from another condition.
-max_epochs: 1000
+max_epochs: 100
 
 # snapshot_every_epochs: How frequently to take a snapshot.  This will be the
 # restore point if our run is interrupted, for example by spot instance eviction.
-snapshot_every_epochs: 100
+snapshot_every_epochs: 1
 
 # metrics_every_epochs: How frequently to calculate performance metrics for both
 # the training and validation set.  This will determine the resolution of
 # graphs.  Tracking performance adds an overhead on training and requires doing
 # an inference run over the validation set.
-metrics_every_epochs: 5
+metrics_every_epochs: 1
