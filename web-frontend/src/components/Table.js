@@ -5,9 +5,28 @@ import { AiOutlineArrowUp, AiOutlineArrowDown } from 'react-icons/ai'; // import
 import './Table.css';
 
 function Table({ data }) {
+  // Get initial values from local storage or set defaults
+  let initialSortField = 'started_at';
+  let initialSortOrder = 'desc';
+
+  try {
+    const sortFieldFromStorage = localStorage.getItem('sortField');
+    const sortOrderFromStorage = localStorage.getItem('sortOrder');
+
+    if (sortFieldFromStorage) {
+      initialSortField = sortFieldFromStorage;
+    }
+
+    if (sortOrderFromStorage) {
+      initialSortOrder = sortOrderFromStorage;
+    }
+  } catch (error) {
+    console.log('Failed to access localStorage, using default sort options');
+  }
+
   // Add state for sort field and order
-  const [sortField, setSortField] = useState('started_at');
-  const [sortOrder, setSortOrder] = useState('desc');
+  const [sortField, setSortField] = useState(initialSortField);
+  const [sortOrder, setSortOrder] = useState(initialSortOrder);
 
   // Add sortedData state to keep the sorted data
   const [sortedData, setSortedData] = useState([]);
@@ -18,6 +37,14 @@ function Table({ data }) {
   const showMini = queryParams.get('showMini') === 'true';
 
   useEffect(() => {
+    try {
+      // Store sort field and order in local storage
+      localStorage.setItem('sortField', sortField);
+      localStorage.setItem('sortOrder', sortOrder);
+    } catch (error) {
+      console.log('Failed to save sort options to localStorage');
+    }
+
     let newData = [...data];
 
     // If showMini is false, filter out mini runs
@@ -27,13 +54,13 @@ function Table({ data }) {
 
     newData.sort((a, b) => {
       if (a[sortField] < b[sortField]) {
-          return sortOrder === 'asc' ? -1 : 1;
-        }
-        if (a[sortField] > b[sortField]) {
-          return sortOrder === 'asc' ? 1 : -1;
-        }
-        return 0;
-      });
+        return sortOrder === 'asc' ? -1 : 1;
+      }
+      if (a[sortField] > b[sortField]) {
+        return sortOrder === 'asc' ? 1 : -1;
+      }
+      return 0;
+    });
 
     setSortedData(newData);
   }, [data, sortField, sortOrder, showMini]);
