@@ -252,6 +252,16 @@ class Run:
         performance_tracker_reusable = PerformanceTracker()
         error_analysis_s3_url = None
 
+        # if we are beginning a finetuning run, get a baseline performance on
+        # the validation set before we start training
+        if self.config.finetune_from_snapshot and self.start_epoch == 1:
+            print("Before beginning funetuning, getting baseline performance on validation set...")
+            model_tester.test(self.model, performance_tracker_reusable, None, self.device, self.no_progress_bar)
+            performance_tracker_reusable.print_report()
+            # store the metrics against epoch 0
+            validation_metrics_manager.store_performance_metrics(self.config.model_name, self.validation_dataset_type, 0, performance_tracker_reusable.get_metrics(), True, self.run_id)
+
+        # begin training loop
         try:
             for epoch in range(self.start_epoch, self.config.max_epochs+1):
                 print(f"Epoch {epoch}/{self.config.max_epochs}")
