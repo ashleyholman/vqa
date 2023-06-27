@@ -24,7 +24,10 @@ class ModelTester:
         # Wrap data_loader with tqdm to show a progress bar, unless --no-progress-bar was specified
         dataloader = self.dataloader
         if not no_progress_bar:
-            dataloader = tqdm(dataloader)
+            total_batches = len(dataloader)
+            if self.config.max_batches_per_epoch:
+                total_batches = min(self.config.max_batches_per_epoch, total_batches)
+            dataloader = tqdm(dataloader, total=total_batches)
 
         # No need to track gradients for this
         with torch.no_grad():
@@ -56,3 +59,8 @@ class ModelTester:
 
                 if idx % 500 == 0:
                     print(f"\nBatch {idx}..")
+
+                # Limit the number of batches per epoch if configured to do so
+                if self.config.max_batches_per_epoch and idx >= self.config.max_batches_per_epoch:
+                    print(f"Reached max batches per epoch ({self.config.max_batches_per_epoch}).")
+                    break

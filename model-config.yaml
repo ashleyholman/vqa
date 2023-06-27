@@ -43,6 +43,7 @@ merge_singular_plural_answer_classes: true
 
 # max_epochs: Training will cut off here if it hasn't already cut-off from another condition.
 max_epochs: 100
+max_batches_per_epoch: 1000
 
 # snapshot_every_epochs: How frequently to take a snapshot.  This will be the
 # restore point if our run is interrupted, for example by spot instance eviction.
