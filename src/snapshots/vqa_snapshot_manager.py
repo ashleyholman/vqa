@@ -68,7 +68,7 @@ class VQASnapshotManager:
         model.to(device)
 
         # Load the optimizer's state dict
-        optimizer = Adam(model.parameters())
+        optimizer = Adam(model.parameters(), lr=self.config.learning_rate)
         
         # We only restore the optimizer's state dict if we're not starting a new
         # finetuning run. This is because the optimizer state of a
