@@ -16,6 +16,7 @@ URLS = [
     "https://s3.amazonaws.com/cvmlp/vqa/mscoco/vqa/v2_Questions_Train_mscoco.zip",
     "https://s3.amazonaws.com/cvmlp/vqa/mscoco/vqa/v2_Annotations_Train_mscoco.zip",
     "s3://vqa-ap-southeast-1/datasets/train_text_embeddings.bert-base-uncased.pt",
+    "s3://vqa-ap-southeast-1/datasets/train_text_embeddings.bert-large-uncased.pt",
     "s3://vqa-ap-southeast-1/datasets/train_vision_embeddings.vit-base-patch16-224-in21k.pt",
     "s3://vqa-ap-southeast-1/datasets/train_vision_embeddings.vit-huge-patch14-224-in21k.pt",
 
@@ -24,6 +25,7 @@ URLS = [
     "https://s3.amazonaws.com/cvmlp/vqa/mscoco/vqa/v2_Questions_Val_mscoco.zip",
     "https://s3.amazonaws.com/cvmlp/vqa/mscoco/vqa/v2_Annotations_Val_mscoco.zip",
     "s3://vqa-ap-southeast-1/datasets/validation_text_embeddings.bert-base-uncased.pt",
+    "s3://vqa-ap-southeast-1/datasets/validation_text_embeddings.bert-large-uncased.pt",
     "s3://vqa-ap-southeast-1/datasets/validation_vision_embeddings.vit-base-patch16-224-in21k.pt",
     "s3://vqa-ap-southeast-1/datasets/validation_vision_embeddings.vit-huge-patch14-224-in21k.pt"
 ]
