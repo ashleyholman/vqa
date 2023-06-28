@@ -7,6 +7,7 @@ from datetime import datetime
 from tqdm import tqdm
 from src.data.vqa_dataset import VQADataset
 from src.models.vqa_model import VQAModel
+from src.util.linear_warmup_scheduler import LinearWarmupScheduler
 
 class ModelTrainer:
     def __init__(self, config, model: VQAModel, dataset, optimizer, num_dataloader_workers):
@@ -16,6 +17,19 @@ class ModelTrainer:
         self.optimizer = optimizer
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.isModelParallel = False
+        self.unfreeze_every_epochs = self.config.finetune_unfreeze_every_epochs if self.config.finetune_unfreeze_every_epochs else 4
+
+        if self.config.learning_rate_warmup_steps:
+            # Learning rate scheduler requires 'initial_lr' set on all parameter groups in the model
+            for param_group in optimizer.param_groups:
+                param_group['initial_lr'] = self.config.learning_rate
+
+            # create a learning rate scheduler to gradually warm up the learning
+            # rate over the given number of steps
+            if not isinstance(self.config.learning_rate_warmup_steps, int):
+                raise ValueError("learning_rate_warmup_steps must be an integer.")
+
+            self.lr_scheduler = LinearWarmupScheduler(optimizer, warmup_steps=self.config.learning_rate_warmup_steps)
 
         print(f"Torch device: {self.device}")
         print(f"Using {num_dataloader_workers} DataLoader workers")
@@ -57,7 +71,7 @@ class ModelTrainer:
             # multiply the batch size by number of GPUs
             batch_size = batch_size * torch.cuda.device_count()
         print(f"Using batch size: {batch_size}")
-        return DataLoader(self.dataset, batch_size=batch_size, num_workers=num_dataloader_workers, shuffle=True)
+        return DataLoader(self.dataset, batch_size=batch_size, num_workers=num_dataloader_workers, shuffle=self.config.shuffle)
 
     def _create_loss_function(self):
         loss_args = {}
@@ -85,9 +99,9 @@ class ModelTrainer:
                 total_batches = min(self.config.max_batches_per_epoch, total_batches)
             dataloader = tqdm(dataloader, total=total_batches)
 
-        if self.config.finetune_gradual_unfreezing:
+        if self.config.finetune_from_snapshot and self.config.finetune_gradual_unfreezing:
             # unfreeze layers according to the current epoch
-            self.model.unfreeze_layers(1+int(epoch / 4))
+            self.model.unfreeze_layers(1+int((epoch-1) / self.unfreeze_every_epochs))
 
         self.model.train()
         for idx, batch in enumerate(dataloader, start=1):
@@ -114,6 +128,10 @@ class ModelTrainer:
             # Backward pass and optimize
             loss.backward()
             self.optimizer.step()
+
+            # Step the learning-rate scheduler, if we have one
+            if self.lr_scheduler:
+                self.lr_scheduler.step()
 
             # Use PerformanceTracker to track the model's accuracy, loss etc
             if performance_tracker:

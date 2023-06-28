@@ -28,11 +28,13 @@ input_embedding_model_names:
 ###### training-related hyperparameters ######
 batch_size: 32
 learning_rate: 1.e-8
+learning_rate_warmup_steps: 2000
 shuffle: true
 # set a finetune_from_snapshot to resume training from a previous snapshot, with
 # the full vit and bert models included in the training.
 finetune_from_snapshot: 'snapshot_vitbase_1e5_unweighted_1hidden_hs1536_dropout_batchnorm_train_epoch_600_20230625_171524'
 finetune_gradual_unfreezing: true
+finetune_unfreeze_every_epochs: 5
 
 ###### loss-function parameters ######
 use_class_weights: false
