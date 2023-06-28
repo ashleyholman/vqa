@@ -257,7 +257,7 @@ class Run:
         if self.config.finetune_from_snapshot and self.start_epoch == 1:
             print("Before beginning funetuning, getting baseline performance on validation set...")
             model_tester.test(self.model, performance_tracker_reusable, None, self.device, self.no_progress_bar)
-            performance_tracker_reusable.print_report()
+            performance_tracker_reusable.print_report("Baseline Validation")
             # store the metrics against epoch 0
             validation_metrics_manager.store_performance_metrics(self.config.model_name, self.validation_dataset_type, 0, performance_tracker_reusable.get_metrics(), True, self.run_id)
 
@@ -285,7 +285,7 @@ class Run:
                 print(f"Epoch {epoch} completed training at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}, took {elapsed_time/60:.2f} minutes.")
 
                 if is_metrics_epoch:
-                    performance_tracker.print_report()
+                    performance_tracker.print_report("Training")
                     training_metrics_manager.store_performance_metrics(self.config.model_name, self.training_dataset_type, epoch, performance_tracker.get_metrics(), True, self.run_id)
 
                 if is_snapshot_epoch:
@@ -309,7 +309,7 @@ class Run:
                     model_tester.test(self.model, performance_tracker, error_tracker, self.device, self.no_progress_bar)
 
                     # Print performance report
-                    performance_tracker.print_report()
+                    performance_tracker.print_report("Validation")
 
                     # store metrics
                     validation_metrics_manager.store_performance_metrics(self.config.model_name, self.validation_dataset_type, epoch, performance_tracker.get_metrics(), True, self.run_id)

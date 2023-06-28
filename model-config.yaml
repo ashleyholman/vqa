@@ -27,7 +27,7 @@ input_embedding_model_names:
 
 ###### training-related hyperparameters ######
 batch_size: 32
-learning_rate: 1.e-6
+learning_rate: 1.e-8
 shuffle: true
 # set a finetune_from_snapshot to resume training from a previous snapshot, with
 # the full vit and bert models included in the training.

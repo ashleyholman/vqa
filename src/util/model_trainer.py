@@ -85,12 +85,12 @@ class ModelTrainer:
                 total_batches = min(self.config.max_batches_per_epoch, total_batches)
             dataloader = tqdm(dataloader, total=total_batches)
 
+        if self.config.finetune_gradual_unfreezing:
+            # unfreeze layers according to the current epoch
+            self.model.unfreeze_layers(1+int(epoch / 4))
+
         self.model.train()
         for idx, batch in enumerate(dataloader, start=1):
-            if self.config.finetune_gradual_unfreezing:
-                # unfreeze layers according to the current epoch
-                self.model.unfreeze_layers(epoch)
-
             # Transfer data to the appropriate device
             if self.config.finetune_from_snapshot:
                 # send image and text features to the device

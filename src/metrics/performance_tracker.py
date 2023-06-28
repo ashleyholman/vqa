@@ -197,7 +197,7 @@ class PerformanceTracker:
 
         return self.cached_metric_values
 
-    def print_report(self):
-        print("== Performance Metrics ==")
+    def print_report(self, dataset_type):
+        print(f"== {dataset_type} Performance Metrics ==")
         for metric_name, metric in self.metrics.items():
             print(f"{metric_name}: {metric.value():.4f}")
