@@ -1,5 +1,5 @@
 ###### model name ######
-model_name: 'finetune_vitbase_bertbase_1e6_1hidden_hs1536'
+model_name: 'finetune_vitbase_bertbase_1e8_1hidden_hs1536'
 
 ###### model architecture-related settings ######
 num_hidden_layers: 1
@@ -27,7 +27,7 @@ input_embedding_model_names:
 
 ###### training-related hyperparameters ######
 batch_size: 32
-learning_rate: 1.e-6
+learning_rate: 1.e-8
 shuffle: true
 # set a finetune_from_snapshot to resume training from a previous snapshot, with
 # the full vit and bert models included in the training.
