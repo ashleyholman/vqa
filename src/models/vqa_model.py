@@ -18,6 +18,13 @@ class VQAModel(nn.Module):
             self.bert = BertModel.from_pretrained(self.config.input_embedding_model_names['text'])
             self.vit = ViTModel.from_pretrained(self.config.input_embedding_model_names['vision'])
 
+            if self.config.finetune_gradual_unfreezing:
+                # If finetuning with gradual unfreezing, we begin with all layers frozen in vit/bert.
+                for param in self.bert.parameters():
+                    param.requires_grad = False
+                for param in self.vit.parameters():
+                    param.requires_grad = False
+
         self.image_embedding_size = embeddings_manager.get_embedding_size('vision')
         self.text_embedding_size = embeddings_manager.get_embedding_size('text')
 
@@ -156,3 +163,16 @@ class VQAModel(nn.Module):
             output = torch.matmul(F.normalize(output), self.answer_embeddings.T)
 
         return output
+
+    def unfreeze_layers(self, num_layers):
+        for i, layer in enumerate(reversed(self.bert.encoder.layer)):
+            if i < num_layers:
+                print(f"Unfreezing BERT layer {i}")
+                for param in layer.parameters():
+                    param.requires_grad = True
+
+        for i, layer in enumerate(reversed(self.vit.encoder.layer)):
+            if i < num_layers:
+                print(f"Unfreezing ViT layer {i}")
+                for param in layer.parameters():
+                    param.requires_grad = True

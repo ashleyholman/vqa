@@ -9,7 +9,7 @@ from src.data.vqa_dataset import VQADataset
 from src.models.vqa_model import VQAModel
 
 class ModelTrainer:
-    def __init__(self, config, model, dataset, optimizer, num_dataloader_workers):
+    def __init__(self, config, model: VQAModel, dataset, optimizer, num_dataloader_workers):
         self.config = config
         self.dataset = dataset
         self.model = model
@@ -76,7 +76,7 @@ class ModelTrainer:
 
         return torch.nn.CrossEntropyLoss(**loss_args)
 
-    def train_one_epoch(self, performance_tracker=None, no_progress_bar=True):
+    def train_one_epoch(self, epoch, performance_tracker=None, no_progress_bar=True):
         # Wrap data_loader with tqdm to show a progress bar, unless --no-progress-bar was specified
         dataloader = self.dataloader
         if not no_progress_bar:
@@ -87,6 +87,10 @@ class ModelTrainer:
 
         self.model.train()
         for idx, batch in enumerate(dataloader, start=1):
+            if self.config.finetune_gradual_unfreezing:
+                # unfreeze layers according to the current epoch
+                self.model.unfreeze_layers(epoch)
+
             # Transfer data to the appropriate device
             if self.config.finetune_from_snapshot:
                 # send image and text features to the device
